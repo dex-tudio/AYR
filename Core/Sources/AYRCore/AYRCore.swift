@@ -34,7 +34,7 @@ public func banner(total: Int, budget: Int) -> String {
 
 public struct AppSettings: Codable, Equatable, Sendable {
     public var identity: Identity
-    public private(set) var dailyBudget: Int
+    public let dailyBudget: Int
     public var sources: Set<PaymentSource>
 
     /// 기준 금액은 원 단위 양의 정수만 받는다.
@@ -44,13 +44,6 @@ public struct AppSettings: Codable, Equatable, Sendable {
         self.identity = identity
         self.dailyBudget = budget
         self.sources = sources
-    }
-
-    @discardableResult
-    public mutating func setDailyBudget(_ budget: Int) -> Bool {
-        guard budget > 0 else { return false }
-        dailyBudget = budget
-        return true
     }
 
     /// 선택한 수단 중 지원되는 것만 해석에 쓴다. 테스트 표식이 있으면 합산하지 않는 `.test`.
@@ -70,11 +63,6 @@ public enum PaymentEvent: Equatable, Sendable {
     case test
 }
 
-public enum Trigger: Equatable, Sendable {
-    case message
-    case appNotification(app: String)
-}
-
 /// 결제 수단 + 수신 경로. 수단마다 경로를 하나로 정해 같은 결제를 두 번 합산하지 않는다.
 public enum PaymentSource: String, CaseIterable, Codable, Sendable {
     case kbCheckSMS
@@ -91,13 +79,6 @@ public enum PaymentSource: String, CaseIterable, Codable, Sendable {
 
     /// 실제 형식을 확인한 수단만 선택할 수 있다.
     public var isSupported: Bool { self == .kbCheckSMS }
-
-    public var trigger: Trigger {
-        switch self {
-        case .kbCheckSMS: .message
-        case .tossNotification: .appNotification(app: "토스")
-        }
-    }
 
     /// 자동화 트리거에 거는 '포함' 필터 문구. 없으면 nil.
     public var filterKeyword: String? {
@@ -190,10 +171,5 @@ public func dayKey(for date: Date, calendar: Calendar = .current) -> String {
 }
 
 func won(_ amount: Int) -> String {
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.locale = Locale(identifier: "en_US_POSIX")
-    formatter.groupingSeparator = ","
-    formatter.usesGroupingSeparator = true
-    return formatter.string(from: NSNumber(value: amount))!
+    amount.formatted(.number.locale(Locale(identifier: "en_US")))
 }

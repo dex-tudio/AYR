@@ -29,12 +29,6 @@ final class AYRCoreTests: XCTestCase {
         XCTAssertEqual(AppSettings(identity: .student, dailyBudget: 15_000)?.dailyBudget, 15_000)
         XCTAssertNil(AppSettings(identity: .student, dailyBudget: 0))
         XCTAssertNil(AppSettings(identity: .student, dailyBudget: -1))
-
-        var settings = AppSettings(identity: .worker)!
-        XCTAssertFalse(settings.setDailyBudget(0))
-        XCTAssertEqual(settings.dailyBudget, 50_000)
-        XCTAssertTrue(settings.setDailyBudget(7_000))
-        XCTAssertEqual(settings.dailyBudget, 7_000)
     }
 
     func testSettingsParseOnlySelectedSupportedSources() {
@@ -60,11 +54,8 @@ final class AYRCoreTests: XCTestCase {
         XCTAssertEqual(day.total, 0)
     }
 
-    func testSourceSupportAndTriggers() {
-        XCTAssertTrue(PaymentSource.kbCheckSMS.isSupported)
-        XCTAssertFalse(PaymentSource.tossNotification.isSupported)
-        XCTAssertEqual(PaymentSource.kbCheckSMS.trigger, .message)
-        XCTAssertEqual(PaymentSource.tossNotification.trigger, .appNotification(app: "토스"))
+    func testOnlyConfirmedSourcesAreSupported() {
+        XCTAssertEqual(PaymentSource.allCases.filter(\.isSupported), [.kbCheckSMS])
     }
 
     func testApprovalsSumAndRejectNonPositive() {
