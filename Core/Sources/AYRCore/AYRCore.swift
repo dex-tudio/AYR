@@ -72,6 +72,33 @@ public struct DailySpending: Codable, Equatable, Sendable {
     }
 }
 
+/// KB국민 결제 문자를 해석한다. 확인된 형식은 체크카드 승인뿐이며(2026-11-03), 그 외는 nil.
+/// ```
+/// [Web발신]
+/// KB국민체크(1234)
+/// 홍*동님
+/// 11/03 19:46
+/// 5,100원
+/// 가게이름 사용
+/// ```
+public func parseKBMessage(_ text: String) -> PaymentEvent? {
+    let lines = text.split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }
+    guard lines.contains(where: { $0.hasPrefix("KB국민체크") }),
+          lines.last?.hasSuffix(" 사용") == true else { return nil }
+    let amounts = lines.compactMap(wonAmount)
+    guard amounts.count == 1 else { return nil }
+    return .approval(amounts[0])
+}
+
+/// `5,100원`처럼 금액만 있는 줄. 0원 이하는 nil.
+func wonAmount(_ line: String) -> Int? {
+    guard line.hasSuffix("원") else { return nil }
+    let digits = line.dropLast().replacingOccurrences(of: ",", with: "")
+    guard !digits.isEmpty, digits.allSatisfy({ $0.isASCII && $0.isNumber }),
+          let amount = Int(digits), amount > 0 else { return nil }
+    return amount
+}
+
 public func dayKey(for date: Date, calendar: Calendar = .current) -> String {
     let c = calendar.dateComponents([.year, .month, .day], from: date)
     return String(format: "%04d-%02d-%02d", c.year!, c.month!, c.day!)

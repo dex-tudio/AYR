@@ -57,6 +57,24 @@ final class AYRCoreTests: XCTestCase {
         XCTAssertEqual(dayKey(for: utcLateNight.addingTimeInterval(-1), calendar: seoul), "2026-11-03")
     }
 
+    private let kbApproval = "[Web발신]\nKB국민체크(1234)\n홍*동님\n11/03 19:46\n5,100원\n가게이름 사용"
+
+    func testParsesKBCheckApproval() {
+        XCTAssertEqual(parseKBMessage(kbApproval), .approval(5_100))
+        XCTAssertEqual(parseKBMessage(kbApproval.replacingOccurrences(of: "\n", with: "\r\n")), .approval(5_100))
+        XCTAssertEqual(parseKBMessage(kbApproval.replacingOccurrences(of: "5,100원", with: "1,234,567원")), .approval(1_234_567))
+    }
+
+    func testRejectsUnknownKBMessages() {
+        // 형식을 확인하지 않은 취소·기타 문자는 합산하지 않는다.
+        XCTAssertNil(parseKBMessage(kbApproval.replacingOccurrences(of: "가게이름 사용", with: "가게이름 취소")))
+        XCTAssertNil(parseKBMessage(kbApproval.replacingOccurrences(of: "KB국민체크", with: "OO은행")))
+        XCTAssertNil(parseKBMessage(kbApproval.replacingOccurrences(of: "5,100원\n", with: "")))
+        XCTAssertNil(parseKBMessage(kbApproval.replacingOccurrences(of: "5,100원", with: "0원")))
+        XCTAssertNil(parseKBMessage(kbApproval.replacingOccurrences(of: "5,100원", with: "5,100원\n누적\n9,000원")))
+        XCTAssertNil(parseKBMessage(""))
+    }
+
     func testCodableRoundTrip() throws {
         let day = DailySpending(day: "2026-11-03", approvals: [1, 2])
         let decoded = try JSONDecoder().decode(DailySpending.self, from: JSONEncoder().encode(day))
