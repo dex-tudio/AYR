@@ -11,30 +11,113 @@ public enum Identity: String, CaseIterable, Codable, Sendable {
         }
     }
 
-    /// 하루 기준 금액(원).
-    public var dailyBudget: Int {
+    /// 신분별 하루 기준 금액 기본값(원). 사용자가 온보딩·설정에서 바꿀 수 있다.
+    public var defaultBudget: Int {
         switch self {
         case .student: 20_000
         case .jobSeeker: 30_000
         case .worker: 50_000
         }
     }
+}
 
-    /// 50% 미만 / 100% 미만 / 그 이상. 소수 없이 비교하려고 합계에 2를 곱한다.
-    public func phrase(for total: Int) -> String {
-        if total * 2 < dailyBudget { return "아직 여유 있어요" }
-        if total < dailyBudget { return "슬슬 조절해볼까요?" }
-        return "님 부자임?"
+/// 50% 미만 / 100% 미만 / 그 이상. 소수 없이 비교하려고 합계에 2를 곱한다.
+public func phrase(total: Int, budget: Int) -> String {
+    if total * 2 < budget { return "아직 여유 있어요" }
+    if total < budget { return "슬슬 조절해볼까요?" }
+    return "님 부자임?"
+}
+
+public func banner(total: Int, budget: Int) -> String {
+    "오늘 \(won(total))원 · \(phrase(total: total, budget: budget))"
+}
+
+public struct AppSettings: Codable, Equatable, Sendable {
+    public var identity: Identity
+    public private(set) var dailyBudget: Int
+    public var sources: Set<PaymentSource>
+
+    /// 기준 금액은 원 단위 양의 정수만 받는다.
+    public init?(identity: Identity, dailyBudget: Int? = nil, sources: Set<PaymentSource> = []) {
+        let budget = dailyBudget ?? identity.defaultBudget
+        guard budget > 0 else { return nil }
+        self.identity = identity
+        self.dailyBudget = budget
+        self.sources = sources
     }
 
-    public func banner(for total: Int) -> String {
-        "오늘 \(won(total))원 · \(phrase(for: total))"
+    @discardableResult
+    public mutating func setDailyBudget(_ budget: Int) -> Bool {
+        guard budget > 0 else { return false }
+        dailyBudget = budget
+        return true
+    }
+
+    /// 선택한 수단 중 지원되는 것만 해석에 쓴다. 테스트 표식이 있으면 합산하지 않는 `.test`.
+    public func parse(_ text: String) -> PaymentEvent? {
+        if text.contains(PaymentSource.testMarker) { return .test }
+        for source in PaymentSource.allCases where sources.contains(source) && source.isSupported {
+            if let event = source.parse(text) { return event }
+        }
+        return nil
     }
 }
 
 public enum PaymentEvent: Equatable, Sendable {
     case approval(Int)
     case cancellation(Int)
+    /// 자동화 수신 테스트. 합산하지 않는다.
+    case test
+}
+
+public enum Trigger: Equatable, Sendable {
+    case message
+    case appNotification(app: String)
+}
+
+/// 결제 수단 + 수신 경로. 수단마다 경로를 하나로 정해 같은 결제를 두 번 합산하지 않는다.
+public enum PaymentSource: String, CaseIterable, Codable, Sendable {
+    case kbCheckSMS
+    case tossNotification
+
+    public static let testMarker = "AYR테스트"
+
+    public var title: String {
+        switch self {
+        case .kbCheckSMS: "KB국민 체크카드 · 문자"
+        case .tossNotification: "토스뱅크 체크카드·토스페이 · 토스 알림"
+        }
+    }
+
+    /// 실제 형식을 확인한 수단만 선택할 수 있다.
+    public var isSupported: Bool { self == .kbCheckSMS }
+
+    public var trigger: Trigger {
+        switch self {
+        case .kbCheckSMS: .message
+        case .tossNotification: .appNotification(app: "토스")
+        }
+    }
+
+    /// 자동화 트리거에 거는 '포함' 필터 문구. 없으면 nil.
+    public var filterKeyword: String? {
+        switch self {
+        case .kbCheckSMS: "KB국민체크"
+        case .tossNotification: nil
+        }
+    }
+
+    /// 자기 자신에게 보내 자동화를 시험하는 문구. 트리거 필터를 통과하고 합산되지 않는다.
+    public var testMessage: String {
+        [filterKeyword, Self.testMarker].compactMap { $0 }.joined(separator: " ")
+    }
+
+    public func parse(_ text: String) -> PaymentEvent? {
+        switch self {
+        case .kbCheckSMS: parseKBMessage(text)
+        case .tossNotification: nil
+        }
+    }
 }
 
 /// 하루치 승인 금액. 알림 원문은 저장하지 않는다.
@@ -68,6 +151,8 @@ public struct DailySpending: Codable, Equatable, Sendable {
             guard amount > 0, let index = approvals.lastIndex(of: amount) else { return false }
             approvals.remove(at: index)
             return true
+        case .test:
+            return false
         }
     }
 }

@@ -4,24 +4,67 @@ import XCTest
 
 final class AYRCoreTests: XCTestCase {
     func testPhraseBoundaries() {
-        let student = Identity.student // 20,000원
-        XCTAssertEqual(student.phrase(for: 0), "아직 여유 있어요")
-        XCTAssertEqual(student.phrase(for: 9_999), "아직 여유 있어요")
-        XCTAssertEqual(student.phrase(for: 10_000), "슬슬 조절해볼까요?")
-        XCTAssertEqual(student.phrase(for: 19_999), "슬슬 조절해볼까요?")
-        XCTAssertEqual(student.phrase(for: 20_000), "님 부자임?")
+        let budget = Identity.student.defaultBudget // 20,000원
+        XCTAssertEqual(phrase(total: 0, budget: budget), "아직 여유 있어요")
+        XCTAssertEqual(phrase(total: 9_999, budget: budget), "아직 여유 있어요")
+        XCTAssertEqual(phrase(total: 10_000, budget: budget), "슬슬 조절해볼까요?")
+        XCTAssertEqual(phrase(total: 19_999, budget: budget), "슬슬 조절해볼까요?")
+        XCTAssertEqual(phrase(total: 20_000, budget: budget), "님 부자임?")
     }
 
     func testSameAmountDiffersByIdentity() {
-        XCTAssertEqual(Identity.student.phrase(for: 25_000), "님 부자임?")
-        XCTAssertEqual(Identity.jobSeeker.phrase(for: 25_000), "슬슬 조절해볼까요?")
-        XCTAssertEqual(Identity.worker.phrase(for: 25_000), "슬슬 조절해볼까요?")
-        XCTAssertEqual(Identity.worker.phrase(for: 24_999), "아직 여유 있어요")
+        XCTAssertEqual(phrase(total: 25_000, budget: Identity.student.defaultBudget), "님 부자임?")
+        XCTAssertEqual(phrase(total: 25_000, budget: Identity.jobSeeker.defaultBudget), "슬슬 조절해볼까요?")
+        XCTAssertEqual(phrase(total: 25_000, budget: Identity.worker.defaultBudget), "슬슬 조절해볼까요?")
+        XCTAssertEqual(phrase(total: 24_999, budget: Identity.worker.defaultBudget), "아직 여유 있어요")
     }
 
     func testBanner() {
-        XCTAssertEqual(Identity.student.banner(for: 12_000), "오늘 12,000원 · 슬슬 조절해볼까요?")
-        XCTAssertEqual(Identity.worker.banner(for: 1_234_567), "오늘 1,234,567원 · 님 부자임?")
+        XCTAssertEqual(banner(total: 12_000, budget: 20_000), "오늘 12,000원 · 슬슬 조절해볼까요?")
+        XCTAssertEqual(banner(total: 1_234_567, budget: 50_000), "오늘 1,234,567원 · 님 부자임?")
+    }
+
+    func testSettingsBudgetDefaultsAndValidation() {
+        XCTAssertEqual(AppSettings(identity: .jobSeeker)?.dailyBudget, 30_000)
+        XCTAssertEqual(AppSettings(identity: .student, dailyBudget: 15_000)?.dailyBudget, 15_000)
+        XCTAssertNil(AppSettings(identity: .student, dailyBudget: 0))
+        XCTAssertNil(AppSettings(identity: .student, dailyBudget: -1))
+
+        var settings = AppSettings(identity: .worker)!
+        XCTAssertFalse(settings.setDailyBudget(0))
+        XCTAssertEqual(settings.dailyBudget, 50_000)
+        XCTAssertTrue(settings.setDailyBudget(7_000))
+        XCTAssertEqual(settings.dailyBudget, 7_000)
+    }
+
+    func testSettingsParseOnlySelectedSupportedSources() {
+        let none = AppSettings(identity: .student)!
+        XCTAssertNil(none.parse(kbApproval)) // KB 미선택
+
+        let kb = AppSettings(identity: .student, sources: [.kbCheckSMS])!
+        XCTAssertEqual(kb.parse(kbApproval), .approval(5_100))
+        XCTAssertNil(kb.parse("아무 문자"))
+
+        let tossOnly = AppSettings(identity: .student, sources: [.tossNotification])!
+        XCTAssertNil(tossOnly.parse(kbApproval)) // 준비 중 수단은 해석하지 않음
+    }
+
+    func testReceptionTestIsNotCounted() {
+        let settings = AppSettings(identity: .student, sources: [.kbCheckSMS])!
+        let message = PaymentSource.kbCheckSMS.testMessage
+        XCTAssertEqual(message, "KB국민체크 AYR테스트")
+        XCTAssertEqual(settings.parse(message), .test)
+
+        var day = DailySpending(day: "2026-11-03")
+        XCTAssertFalse(day.apply(.test))
+        XCTAssertEqual(day.total, 0)
+    }
+
+    func testSourceSupportAndTriggers() {
+        XCTAssertTrue(PaymentSource.kbCheckSMS.isSupported)
+        XCTAssertFalse(PaymentSource.tossNotification.isSupported)
+        XCTAssertEqual(PaymentSource.kbCheckSMS.trigger, .message)
+        XCTAssertEqual(PaymentSource.tossNotification.trigger, .appNotification(app: "토스"))
     }
 
     func testApprovalsSumAndRejectNonPositive() {
@@ -73,6 +116,11 @@ final class AYRCoreTests: XCTestCase {
         XCTAssertNil(parseKBMessage(kbApproval.replacingOccurrences(of: "5,100원", with: "0원")))
         XCTAssertNil(parseKBMessage(kbApproval.replacingOccurrences(of: "5,100원", with: "5,100원\n누적\n9,000원")))
         XCTAssertNil(parseKBMessage(""))
+    }
+
+    func testSettingsCodableRoundTrip() throws {
+        let settings = AppSettings(identity: .worker, dailyBudget: 40_000, sources: [.kbCheckSMS])!
+        XCTAssertEqual(try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(settings)), settings)
     }
 
     func testCodableRoundTrip() throws {
