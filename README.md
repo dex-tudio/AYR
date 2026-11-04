@@ -1,32 +1,50 @@
 # 님 부자임? — AYR
 
-토스 결제 알림을 자동으로 받아 오늘 쓴 돈과 신분별 문구를 iPhone 잠금화면에 보여주는 개인용 iOS 앱입니다.
+KB국민 체크카드 결제 문자를 단축어로 받아 오늘 쓴 돈과 신분별 문구를 iPhone 잠금화면에 보여주는 iOS 앱 POC입니다.
 
 ```
-토스 알림 → 단축어 자동화(본문 전달) → AYR App Intent → 합계·문구 계산 → 위젯·Live Activity
+KB 결제 문자 → 단축어 자동화(본문 전달) → AYR App Intent → 합계·문구 계산 → 위젯·Live Activity
 ```
 
 ## 문서
 
 1. [MVP 확정 명세](docs/mvp-spec.md): 현재 방향, 집계 규칙, 실행 단위.
-2. [iPhone 토스 알림 수집 POC](docs/ios-collection-poc.md): 토스 알림 본문이 단축어에 전달되는지 확인하는 절차.
-3. [금융 API 검토 기록](docs/financial-api-review.md): 보류한 PWA·금융 API·앱인토스 조사.
+2. [POC 검증 기록](docs/poc-results.md): 자동 검증 결과와 실기기 미검증 항목.
+3. [이전 토스 알림 수집 POC](docs/ios-collection-poc.md): 현재 지원 대상이 아닌 토스의 조사 기록.
+4. [금융 API 검토 기록](docs/financial-api-review.md): 보류한 PWA·금융 API·앱인토스 조사.
 
 ## 구조
 
 - `Core/`: 순수 Swift 핵심 로직(합산·취소·날짜 초기화·신분별 문구)과 테스트.
+- `iOS/App/`: 오늘·월별·설정 화면, 온보딩 5단계, 고정 App Intent `AYR 결제 처리`.
+- `iOS/Shared/`: App Group 파일 저장소와 Live Activity 데이터. 원문·가게 이름은 저장하지 않습니다.
+- `iOS/Widgets/`: 잠금화면·홈 화면 위젯, Live Activity·Dynamic Island.
+- `project.yml`: XcodeGen 프로젝트 정의. 최소 iOS 17, 외부 라이브러리 없이 iOS 기본 프레임워크 사용.
 
 ## 검증
 
 ```sh
 # Docker로 핵심 로직 테스트 (Mac 불필요)
 docker run --rm -v "$PWD/Core:/pkg" -w /pkg swift:6.0 swift test
+# 저장 실패·동시 수신·날짜 정리 검사
+docker run --rm -v "$PWD:/repo" -w /repo swift:6.0 bash scripts/check-storage.sh
+# 공통 금액 입력·표시 검사와 iOS Swift 문법 검사
+docker run --rm -v "$PWD:/repo" -w /repo swift:6.0 bash scripts/check-ios.sh
 ```
 
-GitHub Actions도 push·PR마다 같은 테스트를 실행합니다.
+PowerShell에서는 볼륨 경로를 `"${PWD}/Core:/pkg"`, `"${PWD}:/repo"`로 씁니다. GitHub Actions는 push·PR마다 같은 검사와 macOS 시뮬레이터 빌드를 실행하도록 설정했습니다. 이번 작업에서 원격 CI를 실행하지는 않았습니다.
+
+Mac에서 프로젝트 생성·서명 없는 빌드:
+
+```sh
+xcodegen generate
+xcodebuild -project AYR.xcodeproj -scheme AYR -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+```
+
+TestFlight 준비 시 `dev.ayr.app`, `dev.ayr.app.widgets`, `group.dev.ayr.shared`를 본인 소유 식별자로 함께 교체해야 합니다(`project.yml`, `iOS/metadata/*.entitlements`, `iOS/Shared/SpendingStore.swift`). 서명·App Store Connect·키 등록·업로드는 아직 구성하지 않았습니다.
 
 ## 상태
 
-- 핵심 로직: 실행 단위 1.
-- 앱·위젯·Live Activity·TestFlight 빌드: 아직 없음.
-- 토스 알림이 단축어에 전달되는지: 실기기 미검증.
+- 코드 구현: 핵심 로직·저장·앱·온보딩·월별·위젯·Live Activity.
+- 실행 검증: Docker Swift 6에서 Core 25개, 저장소 검사 10개, 공통 금액 입력·표시 검사 3개 통과. iOS 소스 문법 검사 통과.
+- 미검증: Apple SDK 타입 검사·시뮬레이터 화면·실제 문자 자동 수신·잠금화면 동작. TestFlight 테스트는 POC 구현 다음 단계입니다.
