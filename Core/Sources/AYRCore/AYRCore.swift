@@ -162,6 +162,12 @@ public struct DailySpending: Codable, Equatable, Sendable {
             return false
         }
     }
+
+    mutating func removeApproval(at index: Int) -> Bool {
+        guard approvals.indices.contains(index) else { return false }
+        approvals.remove(at: index)
+        return true
+    }
 }
 
 private func validAmounts(_ amounts: [Int]) -> Bool {

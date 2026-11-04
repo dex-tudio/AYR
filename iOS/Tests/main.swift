@@ -142,6 +142,62 @@ do {
             throw CheckError.failed("expected write failure")
         } catch SpendingStoreError.unwritable { }
     }
+    try run("manual add and automatic or manual removal persist") {
+        let editable = SpendingStore(directory: directory.appendingPathComponent("editable"))
+        let initial = try editable.modify {
+            $0.completeOnboarding()
+            _ = try $0.receive(approval)
+        }
+        let reception = try editable.read().lastReception
+        let added = try editable.modify { try $0.addSpending(250, expectedDay: initial.current.day) }
+        try check(added.current.total == 350 && added.lastReception == reception, "manual addition")
+        let removedAuto = try editable.modify { try $0.removeSpending(at: 0, expected: added.current) }
+        try check(removedAuto.current.approvals == [250], "automatic entry removed")
+        try check(try editable.read().summary(for: Date()).total == 250, "month total updated")
+        try editable.modify { try $0.removeSpending(at: 0, expected: removedAuto.current) }
+        let empty = try editable.read()
+        try check(empty.current.total == 0 && empty.summary(for: Date()).total == 0, "last entry removed")
+    }
+    try run("new receipt invalidates removal snapshot without losing payment") {
+        let editable = SpendingStore(directory: directory.appendingPathComponent("stale-removal"))
+        let before = try editable.modify {
+            $0.completeOnboarding()
+            try $0.addSpending(100, expectedDay: $0.current.day)
+        }
+        try editable.modify { _ = try $0.receive(approval) }
+        let editableFile = directory.appendingPathComponent("stale-removal/ledger.json")
+        let bytes = try Data(contentsOf: editableFile)
+        do {
+            try editable.modify { try $0.removeSpending(at: 0, expected: before.current) }
+            throw CheckError.failed("expected stale snapshot error")
+        } catch LedgerError.spendingChanged { }
+        try check(try Data(contentsOf: editableFile) == bytes, "stale removal leaves file intact")
+        let fresh = try editable.read()
+        try editable.modify { try $0.removeSpending(at: 1, expected: fresh.current) }
+        try editable.modify { _ = try $0.receive(approval) }
+        try check(try editable.read().current.approvals == [100, 100], "repeated receipt is independently counted")
+    }
+    try run("midnight rejects old manual form and removal confirmation") {
+        let editable = SpendingStore(directory: directory.appendingPathComponent("midnight-edit"))
+        let today = spendingCalendar().startOfDay(for: Date())
+        let yesterday = spendingCalendar().date(byAdding: .day, value: -1, to: today)!
+        let before = try editable.modify(now: yesterday) {
+            $0.completeOnboarding(now: yesterday)
+            try $0.addSpending(100, expectedDay: $0.current.day, now: yesterday)
+        }
+        do {
+            try editable.modify(now: today) { try $0.addSpending(200, expectedDay: before.current.day, now: today) }
+            throw CheckError.failed("expected old form error")
+        } catch LedgerError.dayChanged { }
+        do {
+            try editable.modify(now: today) { try $0.removeSpending(at: 0, expected: before.current, now: today) }
+            throw CheckError.failed("expected old confirmation error")
+        } catch LedgerError.dayChanged { }
+        let latest = try editable.read(now: today)
+        try check(latest.current.total == 0 && latest.records[before.current.day]?.total == 100, "yesterday preserved")
+        try editable.modify(now: today) { try $0.addSpending(200, expectedDay: latest.current.day, now: today) }
+        try check(try editable.read(now: today).current.total == 200, "retained amount retried with confirmed current day")
+    }
     print("Storage checks: \(passed) passed")
 } catch {
     print("FAIL \(error)")

@@ -166,4 +166,138 @@ final class SpendingLedgerTests: XCTestCase {
         XCTAssertEqual(ledger.records[key]?.total, 100)
         XCTAssertEqual(try JSONDecoder().decode(SpendingLedger.self, from: JSONEncoder().encode(ledger)), ledger)
     }
+
+    func testManualAddAndRemoveUpdateTodayAndMonthWithoutChangingReception() throws {
+        let now = date("2026-11-04")
+        var ledger = SpendingLedger(now: now, calendar: calendar)
+        ledger.completeOnboarding(now: now, calendar: calendar)
+        try ledger.addSpending(12_000, expectedDay: ledger.current.day, now: now, calendar: calendar)
+        XCTAssertEqual(ledger.current.total, 12_000)
+        XCTAssertEqual(ledger.records[ledger.current.day], DailyRecord(total: 12_000, budget: 20_000))
+        XCTAssertEqual(ledger.summary(for: now, now: now, calendar: calendar).total, 12_000)
+        XCTAssertEqual(ledger.summary(for: now, now: now, calendar: calendar).phraseCounts["슬슬 조절해볼까요?"], 1)
+        XCTAssertNil(ledger.lastReception)
+        try ledger.receive("KB국민체크 AYR테스트", now: now, calendar: calendar)
+        let later = now.addingTimeInterval(60)
+        try ledger.addSpending(100, expectedDay: ledger.current.day, now: later, calendar: calendar)
+        try ledger.removeSpending(at: 0, expected: ledger.current, now: later, calendar: calendar)
+        XCTAssertEqual(ledger.current.approvals, [100])
+        XCTAssertEqual(ledger.records[ledger.current.day]?.total, 100)
+        XCTAssertEqual(ledger.summary(for: now, now: later, calendar: calendar).total, 100)
+        XCTAssertEqual(ledger.lastReception, now)
+    }
+
+    func testDeletionUsesExactIndexForEqualAmountsAndPreservesOtherSources() throws {
+        let now = date("2026-11-04")
+        var ledger = SpendingLedger(now: now, calendar: calendar)
+        ledger.completeOnboarding(now: now, calendar: calendar)
+        try ledger.receive(message(100), now: now, calendar: calendar)
+        try ledger.addSpending(200, expectedDay: ledger.current.day, now: now, calendar: calendar)
+        try ledger.addSpending(100, expectedDay: ledger.current.day, now: now, calendar: calendar)
+        try ledger.removeSpending(at: 0, expected: ledger.current, now: now, calendar: calendar)
+        XCTAssertEqual(ledger.current.approvals, [200, 100])
+        try ledger.removeSpending(at: 1, expected: ledger.current, now: now, calendar: calendar)
+        try ledger.removeSpending(at: 0, expected: ledger.current, now: now, calendar: calendar)
+        XCTAssertEqual(ledger.current.total, 0)
+        XCTAssertEqual(ledger.records[ledger.current.day]?.total, 0)
+        XCTAssertEqual(ledger.summary(for: now, now: now, calendar: calendar).total, 0)
+    }
+
+    func testManualMoneyBoundsAndOverflowLeaveSpendingUnchanged() throws {
+        let now = date("2026-11-04")
+        var ledger = SpendingLedger(now: now, calendar: calendar)
+        ledger.completeOnboarding(now: now, calendar: calendar)
+        for amount in [0, -1, maximumMoney + 1, Int.max] {
+            XCTAssertThrowsError(try ledger.addSpending(amount, expectedDay: ledger.current.day, now: now, calendar: calendar)) {
+                guard case LedgerError.invalidAmount = $0 else { return XCTFail("금액 유효성 오류가 필요합니다") }
+            }
+            XCTAssertEqual(ledger.current.total, 0)
+        }
+        try ledger.addSpending(maximumMoney, expectedDay: ledger.current.day, now: now, calendar: calendar)
+        XCTAssertThrowsError(try ledger.addSpending(1, expectedDay: ledger.current.day, now: now, calendar: calendar)) {
+            guard case LedgerError.amountOverflow = $0 else { return XCTFail("금액 범위 초과 오류가 필요합니다") }
+        }
+        XCTAssertEqual(ledger.current.total, maximumMoney)
+        XCTAssertEqual(ledger.records[ledger.current.day]?.total, maximumMoney)
+    }
+
+    func testDeletionRejectsSnapshotChangedByIncomingPaymentAndRepeatedDelete() throws {
+        let now = date("2026-11-04")
+        var ledger = SpendingLedger(now: now, calendar: calendar)
+        ledger.completeOnboarding(now: now, calendar: calendar)
+        try ledger.addSpending(100, expectedDay: ledger.current.day, now: now, calendar: calendar)
+        let beforeArrival = ledger.current
+        try ledger.receive(message(200), now: now, calendar: calendar)
+        XCTAssertThrowsError(try ledger.removeSpending(at: 0, expected: beforeArrival, now: now, calendar: calendar)) {
+            guard case LedgerError.spendingChanged = $0 else { return XCTFail("목록 변경 오류가 필요합니다") }
+        }
+        XCTAssertEqual(ledger.current.approvals, [100, 200])
+        let beforeDelete = ledger.current
+        try ledger.removeSpending(at: 0, expected: beforeDelete, now: now, calendar: calendar)
+        XCTAssertThrowsError(try ledger.removeSpending(at: 0, expected: beforeDelete, now: now, calendar: calendar)) {
+            guard case LedgerError.spendingChanged = $0 else { return XCTFail("목록 변경 오류가 필요합니다") }
+        }
+        XCTAssertEqual(ledger.current.approvals, [200])
+    }
+
+    func testDeletionRejectsInvalidIndexWithoutChangingRecords() throws {
+        let now = date("2026-11-04")
+        var ledger = SpendingLedger(now: now, calendar: calendar)
+        ledger.completeOnboarding(now: now, calendar: calendar)
+        try ledger.addSpending(100, expectedDay: ledger.current.day, now: now, calendar: calendar)
+        let unchanged = ledger
+        for index in [-1, 1, Int.max] {
+            XCTAssertThrowsError(try ledger.removeSpending(at: index, expected: ledger.current, now: now, calendar: calendar)) {
+                guard case LedgerError.spendingChanged = $0 else { return XCTFail("목록 변경 오류가 필요합니다") }
+            }
+            XCTAssertEqual(ledger, unchanged)
+        }
+    }
+
+    func testOldDayAddFormAndDeleteConfirmationCannotChangeNewDay() throws {
+        let start = date("2026-11-04")
+        let next = date("2026-11-05")
+        var ledger = SpendingLedger(now: start, calendar: calendar)
+        ledger.completeOnboarding(now: start, calendar: calendar)
+        try ledger.addSpending(100, expectedDay: ledger.current.day, now: start, calendar: calendar)
+        let yesterday = ledger.current
+        XCTAssertThrowsError(try ledger.addSpending(200, expectedDay: yesterday.day, now: next, calendar: calendar)) {
+            guard case LedgerError.dayChanged = $0 else { return XCTFail("날짜 변경 오류가 필요합니다") }
+        }
+        try ledger.receive(message(300), now: next, calendar: calendar)
+        XCTAssertThrowsError(try ledger.removeSpending(at: 0, expected: yesterday, now: next, calendar: calendar)) {
+            guard case LedgerError.dayChanged = $0 else { return XCTFail("날짜 변경 오류가 필요합니다") }
+        }
+        XCTAssertEqual(ledger.current.approvals, [300])
+        XCTAssertEqual(ledger.records[yesterday.day]?.total, 100)
+        XCTAssertEqual(ledger.records[ledger.current.day]?.total, 300)
+    }
+
+    func testManualChangesRequireCompletedOnboarding() {
+        let now = date("2026-11-04")
+        var ledger = SpendingLedger(now: now, calendar: calendar)
+        XCTAssertThrowsError(try ledger.addSpending(100, expectedDay: ledger.current.day, now: now, calendar: calendar)) {
+            guard case LedgerError.notConfigured = $0 else { return XCTFail("초기 설정 오류가 필요합니다") }
+        }
+        XCTAssertThrowsError(try ledger.removeSpending(at: 0, expected: ledger.current, now: now, calendar: calendar)) {
+            guard case LedgerError.notConfigured = $0 else { return XCTFail("초기 설정 오류가 필요합니다") }
+        }
+        XCTAssertTrue(ledger.records.isEmpty)
+        XCTAssertEqual(ledger.current.total, 0)
+    }
+
+    func testIncomingTextAlwaysCountsAfterManualEntryAndDeletion() throws {
+        let now = date("2026-11-04")
+        var ledger = SpendingLedger(now: now, calendar: calendar)
+        ledger.completeOnboarding(now: now, calendar: calendar)
+        try ledger.addSpending(100, expectedDay: ledger.current.day, now: now, calendar: calendar)
+        try ledger.receive(message(100), now: now, calendar: calendar)
+        try ledger.receive(message(100), now: now, calendar: calendar)
+        XCTAssertEqual(ledger.current.approvals, [100, 100, 100])
+        try ledger.removeSpending(at: 1, expected: ledger.current, now: now, calendar: calendar)
+        try ledger.receive(message(100), now: now, calendar: calendar)
+        XCTAssertEqual(ledger.current.approvals, [100, 100, 100])
+        XCTAssertEqual(ledger.records[ledger.current.day]?.total, 300)
+        XCTAssertEqual(try JSONDecoder().decode(SpendingLedger.self, from: JSONEncoder().encode(ledger)), ledger)
+    }
 }

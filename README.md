@@ -16,7 +16,7 @@ KB 결제 문자 → 단축어 자동화(본문 전달) → AYR App Intent → �
 ## 구조
 
 - `Core/`: 순수 Swift 핵심 로직(합산·취소·날짜 초기화·신분별 문구)과 테스트.
-- `iOS/App/`: 오늘·월별·설정 화면, 온보딩 5단계, 고정 App Intent `AYR 결제 처리`.
+- `iOS/App/`: 오늘·월별·설정 화면, 당일 지출 추가·삭제, 온보딩 5단계, 고정 App Intent `AYR 결제 처리`.
 - `iOS/Shared/`: App Group 파일 저장소와 Live Activity 데이터. 원문·가게 이름은 저장하지 않습니다.
 - `iOS/Widgets/`: 잠금화면·홈 화면 위젯, Live Activity·Dynamic Island.
 - `project.yml`: XcodeGen 프로젝트 정의. 최소 iOS 17, 외부 라이브러리 없이 iOS 기본 프레임워크 사용.
@@ -46,5 +46,5 @@ TestFlight 준비 시 `dev.ayr.app`, `dev.ayr.app.widgets`, `group.dev.ayr.share
 ## 상태
 
 - 코드 구현: 핵심 로직·저장·앱·온보딩·월별·위젯·Live Activity.
-- 실행 검증: Docker Swift 6에서 Core 25개, 저장소 검사 10개, 공통 금액 입력·표시 검사 3개 통과. iOS 소스 문법 검사 통과.
+- 실행 검증: Docker Swift 6에서 Core 33개, 저장소 검사 13개, 공통 금액 입력·표시 검사 3개 통과. iOS 소스 문법 검사 통과.
 - 미검증: Apple SDK 타입 검사·시뮬레이터 화면·실제 문자 자동 수신·잠금화면 동작. TestFlight 테스트는 POC 구현 다음 단계입니다.

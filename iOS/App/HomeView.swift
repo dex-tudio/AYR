@@ -25,6 +25,13 @@ struct HomeView: View {
                     .padding(24)
                     .background(.indigo.opacity(0.08), in: RoundedRectangle(cornerRadius: 24))
 
+                    NavigationLink {
+                        TodaySpendingView()
+                    } label: {
+                        Label("오늘 지출 추가·삭제", systemImage: "list.bullet.rectangle")
+                    }
+                    .buttonStyle(.bordered)
+
                     VStack(alignment: .leading, spacing: 12) {
                         Label("결제 문자와 연결", systemImage: "bolt.horizontal.circle")
                             .font(.headline)

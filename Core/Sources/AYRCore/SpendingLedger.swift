@@ -1,7 +1,7 @@
 import Foundation
 
 public enum LedgerError: Error, LocalizedError {
-    case invalidAmount, amountOverflow, notConfigured, invalidStoredData
+    case invalidAmount, amountOverflow, notConfigured, invalidStoredData, dayChanged, spendingChanged
 
     public var errorDescription: String? {
         switch self {
@@ -9,6 +9,8 @@ public enum LedgerError: Error, LocalizedError {
         case .amountOverflow: "집계할 수 있는 금액 범위를 초과했습니다."
         case .notConfigured: "앱에서 초기 설정을 먼저 완료해주세요."
         case .invalidStoredData: "저장된 기록을 읽을 수 없습니다. 기존 파일은 보존됩니다."
+        case .dayChanged: "날짜가 바뀌었어요. 오늘 기록을 확인한 뒤 다시 시도해주세요."
+        case .spendingChanged: "지출 목록이 바뀌었어요. 최신 기록을 확인한 뒤 다시 선택해주세요."
         }
     }
 }
@@ -142,6 +144,25 @@ public struct SpendingLedger: Codable, Equatable, Sendable {
             records[current.day] = DailyRecord(total: current.total, budget: settings.dailyBudget)
         }
         return changed
+    }
+
+    public mutating func addSpending(_ amount: Int, expectedDay: String,
+                                     now: Date = Date(), calendar: Calendar = spendingCalendar()) throws {
+        refresh(now: now, calendar: calendar)
+        guard onboardingCompleted else { throw LedgerError.notConfigured }
+        guard expectedDay == current.day else { throw LedgerError.dayChanged }
+        guard amount > 0, amount <= maximumMoney else { throw LedgerError.invalidAmount }
+        guard current.apply(.approval(amount)) else { throw LedgerError.amountOverflow }
+        records[current.day] = DailyRecord(total: current.total, budget: settings.dailyBudget)
+    }
+
+    public mutating func removeSpending(at index: Int, expected: DailySpending,
+                                        now: Date = Date(), calendar: Calendar = spendingCalendar()) throws {
+        refresh(now: now, calendar: calendar)
+        guard onboardingCompleted else { throw LedgerError.notConfigured }
+        guard expected.day == current.day else { throw LedgerError.dayChanged }
+        guard expected == current, current.removeApproval(at: index) else { throw LedgerError.spendingChanged }
+        records[current.day] = DailyRecord(total: current.total, budget: settings.dailyBudget)
     }
 
     public func summary(for month: Date, now: Date = Date(), calendar: Calendar = spendingCalendar()) -> MonthSummary {
