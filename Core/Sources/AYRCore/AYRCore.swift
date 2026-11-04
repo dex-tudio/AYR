@@ -21,9 +21,11 @@ public enum Identity: String, CaseIterable, Codable, Sendable {
     }
 }
 
-/// 50% 미만 / 100% 미만 / 그 이상. 소수 없이 비교하려고 합계에 2를 곱한다.
+public let maximumMoney = Int.max / 366
+
+/// 50% 미만 / 100% 미만 / 그 이상. 곱셈 없이 홀수 기준 금액도 정확하게 비교한다.
 public func phrase(total: Int, budget: Int) -> String {
-    if total * 2 < budget { return "아직 여유 있어요" }
+    if total < budget / 2 + budget % 2 { return "아직 여유 있어요" }
     if total < budget { return "슬슬 조절해볼까요?" }
     return "님 부자임?"
 }
@@ -40,10 +42,22 @@ public struct AppSettings: Codable, Equatable, Sendable {
     /// 기준 금액은 원 단위 양의 정수만 받는다.
     public init?(identity: Identity, dailyBudget: Int? = nil, sources: Set<PaymentSource> = []) {
         let budget = dailyBudget ?? identity.defaultBudget
-        guard budget > 0 else { return nil }
+        guard budget > 0, budget <= maximumMoney else { return nil }
         self.identity = identity
         self.dailyBudget = budget
         self.sources = sources
+    }
+
+    private enum CodingKeys: String, CodingKey { case identity, dailyBudget, sources }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        guard let settings = AppSettings(
+            identity: try values.decode(Identity.self, forKey: .identity),
+            dailyBudget: try values.decode(Int.self, forKey: .dailyBudget),
+            sources: try values.decode(Set<PaymentSource>.self, forKey: .sources)
+        ) else { throw LedgerError.invalidStoredData }
+        self = settings
     }
 
     /// 선택한 수단 중 지원되는 것만 해석에 쓴다. 테스트 표식이 있으면 합산하지 않는 `.test`.
@@ -108,6 +122,18 @@ public struct DailySpending: Codable, Equatable, Sendable {
     public private(set) var approvals: [Int]
 
     public init(day: String, approvals: [Int] = []) {
+        precondition(validDayKey(day) && validAmounts(approvals))
+        self.day = day
+        self.approvals = approvals
+    }
+
+    private enum CodingKeys: String, CodingKey { case day, approvals }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        let day = try values.decode(String.self, forKey: .day)
+        let approvals = try values.decode([Int].self, forKey: .approvals)
+        guard validDayKey(day), validAmounts(approvals) else { throw LedgerError.invalidStoredData }
         self.day = day
         self.approvals = approvals
     }
@@ -125,7 +151,7 @@ public struct DailySpending: Codable, Equatable, Sendable {
     public mutating func apply(_ event: PaymentEvent) -> Bool {
         switch event {
         case .approval(let amount):
-            guard amount > 0 else { return false }
+            guard amount > 0, amount <= maximumMoney - total else { return false }
             approvals.append(amount)
             return true
         case .cancellation(let amount):
@@ -136,6 +162,15 @@ public struct DailySpending: Codable, Equatable, Sendable {
             return false
         }
     }
+}
+
+private func validAmounts(_ amounts: [Int]) -> Bool {
+    var total = 0
+    for amount in amounts {
+        guard amount > 0, amount <= maximumMoney - total else { return false }
+        total += amount
+    }
+    return true
 }
 
 /// KB국민 결제 문자를 해석한다. 확인된 형식은 체크카드 승인뿐이며(2026-11-03), 그 외는 nil.
@@ -165,7 +200,15 @@ func wonAmount(_ line: String) -> Int? {
     return amount
 }
 
-public func dayKey(for date: Date, calendar: Calendar = .current) -> String {
+/// 날짜 기록은 기기 시간대를 따르되 사용자가 선택한 달력과 무관하게 양력으로 저장한다.
+public func spendingCalendar(timeZone: TimeZone = .current) -> Calendar {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = timeZone
+    return calendar
+}
+
+public func dayKey(for date: Date, calendar: Calendar = spendingCalendar()) -> String {
+    let calendar = spendingCalendar(timeZone: calendar.timeZone)
     let c = calendar.dateComponents([.year, .month, .day], from: date)
     return String(format: "%04d-%02d-%02d", c.year!, c.month!, c.day!)
 }
