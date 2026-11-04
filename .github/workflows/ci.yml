@@ -11,3 +11,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: swift test --package-path Core
+      - name: Check storage transactions
+        run: bash scripts/check-storage.sh
+      - name: Check money input and Swift syntax
+        run: bash scripts/check-ios.sh
+  ios:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Build app and widgets without signing
+        run: >-
+          xcodebuild -project AYR.xcodeproj -scheme AYR
+          -configuration Debug -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_ALLOWED=NO build
