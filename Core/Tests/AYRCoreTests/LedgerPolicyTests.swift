@@ -234,6 +234,7 @@ final class LedgerPolicyTests: XCTestCase {
         var old = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(ledger)) as? [String: Any])
         old.removeValue(forKey: "monthBudgets")
         old.removeValue(forKey: "restoredDayBudget")
+        old.removeValue(forKey: "lastAttempt")
         var daily = try XCTUnwrap(old["current"] as? [String: Any])
         daily.removeValue(forKey: "carriedTotal")
         old["current"] = daily
@@ -241,6 +242,7 @@ final class LedgerPolicyTests: XCTestCase {
         XCTAssertEqual(decoded.monthBudgets["2026-10"], 620_000)
         XCTAssertEqual(decoded.monthBudgets["2026-11"], 1_500_000)
         XCTAssertEqual(decoded.current.carriedTotal, 0)
+        XCTAssertNil(decoded.lastAttempt)
         XCTAssertEqual(decoded.records["2026-10-01"]?.total, 100)
         old["monthlyBudget"] = 200_000
         let custom = try JSONDecoder().decode(SpendingLedger.self, from: JSONSerialization.data(withJSONObject: old))
@@ -251,11 +253,80 @@ final class LedgerPolicyTests: XCTestCase {
         XCTAssertThrowsError(try JSONDecoder().decode(SpendingLedger.self, from: JSONSerialization.data(withJSONObject: old)))
     }
 
+    func testReceptionAttemptDistinguishesSuccessTestAndIgnoredWithoutChangingLastGoodReceipt() throws {
+        let now = date("2026-11-04")
+        let later = now.addingTimeInterval(60)
+        var ledger = SpendingLedger(now: now, calendar: calendar)
+        ledger.completeOnboarding(now: now, calendar: calendar)
+        XCTAssertTrue(try ledger.receive(message(100), now: now, calendar: calendar))
+        XCTAssertEqual(ledger.lastAttempt, ReceptionAttempt(date: now, status: .success))
+        XCTAssertFalse(try ledger.receive("지원하지 않는 가짜 내용", now: later, calendar: calendar))
+        XCTAssertEqual(ledger.lastAttempt, ReceptionAttempt(date: later, status: .ignored))
+        XCTAssertEqual(ledger.lastReception, now)
+        XCTAssertEqual(ledger.current.total, 100)
+        let testDate = later.addingTimeInterval(60)
+        XCTAssertFalse(try ledger.receive("KB국민체크 AYR테스트", now: testDate, calendar: calendar))
+        XCTAssertEqual(ledger.lastAttempt, ReceptionAttempt(date: testDate, status: .test))
+        XCTAssertEqual(ledger.lastReception, testDate)
+        try ledger.addSpending(50, expectedDay: ledger.current.day, now: testDate, calendar: calendar)
+        try ledger.removeSpending(at: 0, expected: ledger.current, now: testDate, calendar: calendar)
+        XCTAssertEqual(ledger.lastAttempt, ReceptionAttempt(date: testDate, status: .test))
+    }
 
+    func testBeforeOnboardingEveryRealAttemptFailsButTestMarkerIsAllowed() throws {
+        let now = date("2026-11-04")
+        var ledger = SpendingLedger(now: now, calendar: calendar)
+        for text in [message(100), "알 수 없는 가짜 본문"] {
+            XCTAssertThrowsError(try ledger.receive(text, now: now, calendar: calendar)) {
+                guard case LedgerError.notConfigured = $0 else { return XCTFail("초기 설정 오류가 필요합니다") }
+            }
+            XCTAssertEqual(ledger.lastAttempt, ReceptionAttempt(date: now, status: .notConfigured))
+            XCTAssertNil(ledger.lastReception)
+            XCTAssertEqual(ledger.current.total, 0)
+        }
+        XCTAssertEqual(try JSONDecoder().decode(SpendingLedger.self, from: JSONEncoder().encode(ledger)), ledger)
+        XCTAssertFalse(try ledger.receive("KB국민체크 AYR테스트", now: now, calendar: calendar))
+        XCTAssertEqual(ledger.lastAttempt?.status, .test)
+        XCTAssertEqual(ledger.lastReception, now)
+        XCTAssertFalse(ledger.onboardingCompleted)
+        XCTAssertTrue(ledger.records.isEmpty)
+    }
 
+    func testOverflowAttemptSurvivesCaughtErrorAndRoundTripWithoutChangingMoneyOrLastGoodReceipt() throws {
+        let now = date("2026-11-04")
+        let later = now.addingTimeInterval(60)
+        var ledger = SpendingLedger(now: now, calendar: calendar)
+        ledger.completeOnboarding(now: now, calendar: calendar)
+        try ledger.receive(message(maximumMoney), now: now, calendar: calendar)
+        XCTAssertThrowsError(try ledger.receive(message(1), now: later, calendar: calendar)) {
+            guard case LedgerError.amountOverflow = $0 else { return XCTFail("범위 초과 오류가 필요합니다") }
+        }
+        XCTAssertEqual(ledger.lastAttempt, ReceptionAttempt(date: later, status: .overflow))
+        XCTAssertEqual(ledger.lastReception, now)
+        XCTAssertEqual(ledger.current.total, maximumMoney)
+        XCTAssertEqual(ledger.records[ledger.current.day]?.total, maximumMoney)
+        let decoded = try JSONDecoder().decode(SpendingLedger.self, from: JSONEncoder().encode(ledger))
+        XCTAssertEqual(decoded, ledger)
+        let next = date("2026-11-05")
+        ledger.refresh(now: next, calendar: calendar)
+        ledger.refresh(now: now, calendar: calendar)
+        XCTAssertEqual(ledger.current.carriedTotal, maximumMoney)
+        XCTAssertThrowsError(try ledger.receive(message(1), now: later, calendar: calendar))
+        XCTAssertThrowsError(try ledger.addSpending(1, expectedDay: ledger.current.day, now: later, calendar: calendar))
+        XCTAssertEqual(ledger.current.total, maximumMoney)
+        XCTAssertEqual(ledger.lastReception, now)
+    }
 
-
-
-
-
+    func testReceptionAttemptContainsOnlySafeDateAndStatus() throws {
+        let now = date("2026-11-04")
+        for status in [ReceptionStatus.success, .test, .ignored, .overflow, .notConfigured] {
+            let attempt = ReceptionAttempt(date: now, status: status)
+            let data = try JSONEncoder().encode(attempt)
+            let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+            XCTAssertEqual(Set(object.keys), ["date", "status"])
+            XCTAssertEqual(object["status"] as? String, status.rawValue)
+            XCTAssertFalse(status.message.isEmpty)
+            XCTAssertEqual(try JSONDecoder().decode(ReceptionAttempt.self, from: data), attempt)
+        }
+    }
 }

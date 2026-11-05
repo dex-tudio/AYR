@@ -66,6 +66,7 @@ public struct SpendingLedger: Codable, Equatable, Sendable {
     public private(set) var monthBudgets: [String: Int]
     public private(set) var onboardingCompleted: Bool
     public private(set) var lastReception: Date?
+    public private(set) var lastAttempt: ReceptionAttempt?
     private var restoredDayBudget: Int?
 
     public var currentBudget: Int { restoredDayBudget ?? settings.dailyBudget }
@@ -181,16 +182,26 @@ public struct SpendingLedger: Codable, Equatable, Sendable {
     @discardableResult
     public mutating func receive(_ text: String, now: Date = Date(), calendar: Calendar = spendingCalendar()) throws -> Bool {
         refresh(now: now, calendar: calendar)
-        guard let event = settings.parse(text) else { return false }
+        let event = settings.parse(text)
         if event == .test {
             lastReception = now
+            lastAttempt = ReceptionAttempt(date: now, status: .test)
             return false
         }
-        guard onboardingCompleted else { throw LedgerError.notConfigured }
+        guard onboardingCompleted else {
+            lastAttempt = ReceptionAttempt(date: now, status: .notConfigured)
+            throw LedgerError.notConfigured
+        }
+        guard let event else {
+            lastAttempt = ReceptionAttempt(date: now, status: .ignored)
+            return false
+        }
         if case .approval(let amount) = event, amount > maximumMoney - current.total {
+            lastAttempt = ReceptionAttempt(date: now, status: .overflow)
             throw LedgerError.amountOverflow
         }
         let changed = current.apply(event)
+        lastAttempt = ReceptionAttempt(date: now, status: changed ? .success : .ignored)
         if changed {
             lastReception = now
             recordCurrentDay()
@@ -259,7 +270,7 @@ public struct SpendingLedger: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case settings, firstDay, current, records, monthlyBudget, monthBudgets, onboardingCompleted, lastReception, restoredDayBudget
+        case settings, firstDay, current, records, monthlyBudget, monthBudgets, onboardingCompleted, lastReception, lastAttempt, restoredDayBudget
     }
 
     public init(from decoder: Decoder) throws {
@@ -272,6 +283,7 @@ public struct SpendingLedger: Codable, Equatable, Sendable {
         monthBudgets = try values.decodeIfPresent([String: Int].self, forKey: .monthBudgets) ?? [:]
         onboardingCompleted = try values.decode(Bool.self, forKey: .onboardingCompleted)
         lastReception = try values.decodeIfPresent(Date.self, forKey: .lastReception)
+        lastAttempt = try values.decodeIfPresent(ReceptionAttempt.self, forKey: .lastAttempt)
         restoredDayBudget = try values.decodeIfPresent(Int.self, forKey: .restoredDayBudget)
         guard records.keys.allSatisfy(validDayKey),
               firstDay.map(validDayKey) ?? !onboardingCompleted,

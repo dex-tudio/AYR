@@ -198,7 +198,29 @@ do {
         try editable.modify(now: today) { try $0.addSpending(200, expectedDay: latest.current.day, now: today) }
         try check(try editable.read(now: today).current.total == 200, "retained amount retried with confirmed current day")
     }
-
+    try run("failed reception status persists without changing money or storing text") {
+        let diagnostic = SpendingStore(directory: directory.appendingPathComponent("diagnostic"))
+        try diagnostic.modify {
+            $0.completeOnboarding()
+            _ = try $0.receive(approval)
+        }
+        let previous = try diagnostic.read()
+        try diagnostic.modify { _ = try $0.receive("해석할 수 없는 가짜 원문") }
+        let ignored = try diagnostic.read()
+        try check(ignored.current.total == 100 && ignored.lastReception == previous.lastReception, "ignored call keeps last good values")
+        try check(ignored.lastAttempt?.status == .ignored, "ignored call is observable")
+        let json = try String(contentsOf: directory.appendingPathComponent("diagnostic/ledger.json"), encoding: .utf8)
+        try check(!json.contains("가짜 원문"), "diagnostic does not store text")
+        try diagnostic.modify { try $0.addSpending(maximumMoney - 100, expectedDay: $0.current.day) }
+        var receiveError: LedgerError?
+        try diagnostic.modify {
+            do { _ = try $0.receive(approval) }
+            catch let error as LedgerError { receiveError = error }
+        }
+        try check(receiveError != nil, "caller receives expected failure after saving status")
+        let overflow = try diagnostic.read()
+        try check(overflow.current.total == maximumMoney && overflow.lastAttempt?.status == .overflow, "failure reason persisted atomically")
+    }
     try run("archived total remains protected after storage round trip") {
         let protectedStore = SpendingStore(directory: directory.appendingPathComponent("protected"))
         let today = spendingCalendar().startOfDay(for: Date())

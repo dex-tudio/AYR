@@ -40,13 +40,7 @@ struct HomeView: View {
                         Label("결제 문자와 연결", systemImage: "bolt.horizontal.circle")
                             .font(.headline)
                         Text("KB국민 체크카드 문자를 단축어 자동화로 전달하면 합계가 바뀝니다.")
-                        if let date = ledger.lastReception {
-                            Text("마지막 수신(테스트 포함): \(date.formatted(date: .abbreviated, time: .shortened))")
-                                .font(.footnote).foregroundStyle(.secondary)
-                        } else {
-                            Text("아직 수신을 확인하지 못했어요.")
-                                .foregroundStyle(.secondary)
-                        }
+                        ReceptionStatusView(ledger: ledger)
                         NavigationLink("자동화 설정·수신 테스트") { ConnectionView() }
                     }
 

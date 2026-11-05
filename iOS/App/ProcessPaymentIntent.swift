@@ -18,11 +18,14 @@ struct ProcessPaymentIntent: LiveActivityIntent {
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         var counted = false
+        var receptionError: LedgerError?
         let ledger = try SpendingStore().modify { ledger in
-            guard ledger.onboardingCompleted || text.contains(PaymentSource.testMarker) else { throw PaymentIntentError.setupRequired }
-            counted = try ledger.receive(text)
+            // 처리 실패도 저장한 뒤 알리므로 앱에서 마지막 호출 결과를 확인할 수 있다.
+            do { counted = try ledger.receive(text) }
+            catch let error as LedgerError { receptionError = error }
         }
         WidgetCenter.shared.reloadAllTimelines()
+        if let receptionError { throw receptionError }
         let activityNotice = await LiveActivityManager.sync(ledger)
         let message: String
         if text.contains(PaymentSource.testMarker) {
@@ -34,11 +37,6 @@ struct ProcessPaymentIntent: LiveActivityIntent {
         }
         return .result(dialog: IntentDialog(stringLiteral: message))
     }
-}
-
-private enum PaymentIntentError: LocalizedError {
-    case setupRequired
-    var errorDescription: String? { "AYR 앱에서 온보딩을 먼저 완료해주세요." }
 }
 
 struct AYRShortcuts: AppShortcutsProvider {

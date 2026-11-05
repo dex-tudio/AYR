@@ -57,14 +57,10 @@ struct ReceptionTestView: View {
                 Text(testMessage).font(.body.monospaced()).textSelection(.enabled)
                 Button("테스트 문구 복사") { UIPasteboard.general.string = testMessage }
                 Button("수신 상태 다시 확인") { model.reload() }
-                if let reception = model.ledger?.lastReception {
-                    Label("마지막 수신 \(reception.formatted(date: .abbreviated, time: .shortened))", systemImage: "checkmark.circle")
-                } else {
-                    Label("아직 수신되지 않았어요", systemImage: "clock")
-                }
+                if let ledger = model.ledger { ReceptionStatusView(ledger: ledger) }
             }
             Section {
-                Text("자기 자신에게 보낸 메시지에 반응하지 않을 수도 있습니다. 다음 평소 KB 결제 때 확인하세요. 테스트를 위해 새로 결제할 필요는 없습니다.")
+                Text("자기 자신에게 보낸 메시지에 반응하지 않을 수도 있습니다. 먼저 온보딩의 시작하기를 눌러 설정을 완료한 뒤, 다음 평소 KB 결제 때 확인하세요. 완료 전 실제 결제 문자는 반영하지 않습니다. 테스트를 위해 새로 결제할 필요는 없습니다.")
                 Text("수신 확인은 나중으로 미뤄도 시작할 수 있습니다. 테스트 문구 수신은 실제 결제 수집 성공을 뜻하지 않습니다.")
                     .font(.footnote).foregroundStyle(.secondary)
             }
