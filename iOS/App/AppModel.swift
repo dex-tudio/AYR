@@ -8,12 +8,18 @@ final class AppModel: ObservableObject {
     @Published private(set) var ledger: SpendingLedger?
     @Published private(set) var error: String?
     @Published private(set) var activityNotice: String?
+    @Published private(set) var canResetRecords = false
+    @Published private(set) var resettingRecords = false
 
     func reload() {
         do {
             ledger = try SpendingStore().read()
             error = nil
-        } catch { self.error = error.localizedDescription }
+            canResetRecords = false
+        } catch {
+            self.error = error.localizedDescription
+            canResetRecords = (error as? SpendingStoreError)?.canReset == true
+        }
     }
 
     @discardableResult
@@ -36,12 +42,14 @@ final class AppModel: ObservableObject {
         do {
             ledger = try SpendingStore().modify(change)
             error = nil
+            canResetRecords = false
             WidgetCenter.shared.reloadAllTimelines()
             return true
         } catch {
             // 수신·삭제로 목록이 바뀐 경우 최신 기록을 보여주되 실패 안내는 유지한다.
             if let latest = try? SpendingStore().read() { ledger = latest }
             self.error = error.localizedDescription
+            canResetRecords = (error as? SpendingStoreError)?.canReset == true
             return false
         }
     }
@@ -51,5 +59,22 @@ final class AppModel: ObservableObject {
         reload()
         guard error == nil, let ledger else { return }
         activityNotice = await LiveActivityManager.sync(ledger)
+    }
+
+    func resetRecords() async {
+        guard canResetRecords, !resettingRecords else { return }
+        resettingRecords = true
+        defer { resettingRecords = false }
+        do {
+            ledger = try SpendingStore().resetPreservingOriginal()
+            error = nil
+            canResetRecords = false
+            activityNotice = nil
+            WidgetCenter.shared.reloadAllTimelines()
+            await LiveActivityManager.endAll()
+        } catch {
+            reload()
+            self.error = error.localizedDescription
+        }
     }
 }

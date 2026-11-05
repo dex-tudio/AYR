@@ -30,5 +30,9 @@ enum LiveActivityManager {
         return nil
     }
 
-
+    static func endAll() async {
+        for activity in Activity<SpendingActivityAttributes>.activities {
+            await activity.end(nil, dismissalPolicy: .immediate)
+        }
+    }
 }

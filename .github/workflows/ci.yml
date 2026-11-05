@@ -13,6 +13,8 @@ jobs:
       - run: swift test --package-path Core
       - name: Check storage transactions
         run: bash scripts/check-storage.sh
+      - name: Check corruption recovery
+        run: bash scripts/check-recovery.sh
       - name: Check money input and Swift syntax
         run: bash scripts/check-ios.sh
   ios:
