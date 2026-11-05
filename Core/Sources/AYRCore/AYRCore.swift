@@ -120,25 +120,29 @@ public struct DailySpending: Codable, Equatable, Sendable {
     /// 기기 현지 날짜 `yyyy-MM-dd`.
     public private(set) var day: String
     public private(set) var approvals: [Int]
+    public private(set) var carriedTotal: Int
 
-    public init(day: String, approvals: [Int] = []) {
-        precondition(validDayKey(day) && validAmounts(approvals))
+    public init(day: String, approvals: [Int] = [], carriedTotal: Int = 0) {
+        precondition(validDayKey(day) && validAmounts(approvals, carriedTotal: carriedTotal))
         self.day = day
         self.approvals = approvals
+        self.carriedTotal = carriedTotal
     }
 
-    private enum CodingKeys: String, CodingKey { case day, approvals }
+    private enum CodingKeys: String, CodingKey { case day, approvals, carriedTotal }
 
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         let day = try values.decode(String.self, forKey: .day)
         let approvals = try values.decode([Int].self, forKey: .approvals)
-        guard validDayKey(day), validAmounts(approvals) else { throw LedgerError.invalidStoredData }
+        let carriedTotal = try values.decodeIfPresent(Int.self, forKey: .carriedTotal) ?? 0
+        guard validDayKey(day), validAmounts(approvals, carriedTotal: carriedTotal) else { throw LedgerError.invalidStoredData }
         self.day = day
         self.approvals = approvals
+        self.carriedTotal = carriedTotal
     }
 
-    public var total: Int { approvals.reduce(0, +) }
+    public var total: Int { approvals.reduce(carriedTotal, +) }
 
     /// 날짜가 바뀌었으면 빈 기록을 돌려준다.
     public func rolled(to day: String) -> DailySpending {
@@ -170,8 +174,9 @@ public struct DailySpending: Codable, Equatable, Sendable {
     }
 }
 
-private func validAmounts(_ amounts: [Int]) -> Bool {
-    var total = 0
+private func validAmounts(_ amounts: [Int], carriedTotal: Int) -> Bool {
+    guard carriedTotal >= 0, carriedTotal <= maximumMoney else { return false }
+    var total = carriedTotal
     for amount in amounts {
         guard amount > 0, amount <= maximumMoney - total else { return false }
         total += amount

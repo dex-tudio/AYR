@@ -15,12 +15,13 @@ private struct SpendingEntry: TimelineEntry {
     let date: Date
     let total: Int?
     let budget: Int
+    let nextBudget: Int
     let message: String?
 }
 
 private struct SpendingProvider: TimelineProvider {
     func placeholder(in context: Context) -> SpendingEntry {
-        SpendingEntry(date: Date(), total: 0, budget: 20_000, message: nil)
+        SpendingEntry(date: Date(), total: 0, budget: 20_000, nextBudget: 20_000, message: nil)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (SpendingEntry) -> Void) {
@@ -32,7 +33,7 @@ private struct SpendingProvider: TimelineProvider {
         let current = entry(at: now)
         let calendar = spendingCalendar()
         let midnight = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now))!
-        let next = SpendingEntry(date: midnight, total: current.total.map { _ in 0 }, budget: current.budget, message: current.message)
+        let next = SpendingEntry(date: midnight, total: current.total.map { _ in 0 }, budget: current.nextBudget, nextBudget: current.nextBudget, message: current.message)
         completion(Timeline(entries: [current, next], policy: .atEnd))
     }
 
@@ -40,11 +41,11 @@ private struct SpendingProvider: TimelineProvider {
         do {
             let ledger = try SpendingStore().read(now: date)
             guard ledger.onboardingCompleted else {
-                return SpendingEntry(date: date, total: nil, budget: ledger.settings.dailyBudget, message: "AYR에서 초기 설정")
+                return SpendingEntry(date: date, total: nil, budget: ledger.settings.dailyBudget, nextBudget: ledger.settings.dailyBudget, message: "AYR에서 초기 설정")
             }
-            return SpendingEntry(date: date, total: ledger.current.total, budget: ledger.settings.dailyBudget, message: nil)
+            return SpendingEntry(date: date, total: ledger.current.total, budget: ledger.currentBudget, nextBudget: ledger.settings.dailyBudget, message: nil)
         } catch {
-            return SpendingEntry(date: date, total: nil, budget: 20_000, message: "앱에서 기록 확인")
+            return SpendingEntry(date: date, total: nil, budget: 20_000, nextBudget: 20_000, message: "앱에서 기록 확인")
         }
     }
 }

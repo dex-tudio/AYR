@@ -60,13 +60,15 @@ private struct SettingsEditor: View {
         Form {
             Section("신분·하루 기준") {
                 IdentityBudgetFields(identity: $identity, budget: $budget)
-                Text("오늘 지출은 유지하고 문구를 다시 계산합니다. 과거 날짜의 기준은 바뀌지 않습니다.")
+                Text("오늘 지출은 유지하고 문구를 다시 계산합니다. 시간대 변경으로 다시 열린 보관 날짜는 원래 기준을 유지하고, 새 기준은 이후 날짜에 사용합니다.")
                     .font(.footnote).foregroundStyle(.secondary)
             }
             Section("월 예산") {
                 Toggle("직접 입력", isOn: $customMonthly)
                 if customMonthly { MoneyField(title: "월 예산(원)", text: $monthly) }
                 else { Text("하루 기준 금액 × 선택한 달의 일수로 계산합니다.") }
+                Text("변경은 이번 달부터 반영하고 지난달 예산은 유지합니다. 직접 입력한 월 예산은 이후 달에도 기본으로 사용합니다.")
+                    .font(.footnote).foregroundStyle(.secondary)
             }
             Section("결제 수단") { SourcePicker(sources: $sources) }
             if !valid {

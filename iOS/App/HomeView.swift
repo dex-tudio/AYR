@@ -15,11 +15,15 @@ struct HomeView: View {
                         Text(money(ledger.current.total))
                             .font(.system(.largeTitle, design: .rounded, weight: .bold))
                             .lineLimit(1).minimumScaleFactor(0.4)
-                        Text(phrase(total: ledger.current.total, budget: ledger.settings.dailyBudget))
+                        Text(phrase(total: ledger.current.total, budget: ledger.currentBudget))
                             .font(.title2.bold())
-                            .foregroundStyle(spendingColor(total: ledger.current.total, budget: ledger.settings.dailyBudget))
-                        Text("\(ledger.settings.identity.title) · 하루 기준 \(money(ledger.settings.dailyBudget))")
+                            .foregroundStyle(spendingColor(total: ledger.current.total, budget: ledger.currentBudget))
+                        Text("\(ledger.settings.identity.title) · 오늘 기준 \(money(ledger.currentBudget))")
                             .font(.subheadline).foregroundStyle(.secondary)
+                        if ledger.currentBudget != ledger.settings.dailyBudget {
+                            Text("보관된 날짜의 원래 기준을 유지하고 있어요. 새 기준은 새로 기록하는 날짜에 적용합니다.")
+                                .font(.footnote).foregroundStyle(.secondary)
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(24)

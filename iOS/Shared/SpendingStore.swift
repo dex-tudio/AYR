@@ -59,7 +59,7 @@ struct SpendingStore {
         do {
             let encoder = JSONEncoder()
             encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(SavedLedger(version: 1, ledger: ledger))
+            let data = try encoder.encode(SavedLedger(version: 2, ledger: ledger))
             #if os(iOS)
             try data.write(to: recordURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
             #else
@@ -73,9 +73,10 @@ struct SpendingStore {
         do {
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
-            let saved = try decoder.decode(SavedLedger.self, from: Data(contentsOf: recordURL))
-            guard saved.version == 1 else { throw SpendingStoreError.unsupportedVersion }
-            return saved.ledger
+            let data = try Data(contentsOf: recordURL)
+            let header = try decoder.decode(VersionHeader.self, from: data)
+            guard header.version == 1 || header.version == 2 else { throw SpendingStoreError.unsupportedVersion }
+            return try decoder.decode(SavedLedger.self, from: data).ledger
         } catch let error as SpendingStoreError { throw error }
         catch { throw SpendingStoreError.unreadable }
     }
@@ -104,4 +105,8 @@ struct SpendingStore {
         let version: Int
         let ledger: SpendingLedger
     }
+    private struct VersionHeader: Decodable {
+        let version: Int
+    }
+
 }

@@ -12,7 +12,7 @@ enum LiveActivityManager {
         let now = Date()
         let calendar = spendingCalendar()
         let midnight = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now))!
-        let state = SpendingActivityAttributes.ContentState(day: ledger.current.day, total: ledger.current.total, budget: ledger.settings.dailyBudget)
+        let state = SpendingActivityAttributes.ContentState(day: ledger.current.day, total: ledger.current.total, budget: ledger.currentBudget)
         let content = ActivityContent(state: state, staleDate: midnight)
         let activities = Activity<SpendingActivityAttributes>.activities
         if let first = activities.first(where: { $0.activityState == .active || $0.activityState == .stale }) {
@@ -29,4 +29,6 @@ enum LiveActivityManager {
         }
         return nil
     }
+
+
 }

@@ -63,13 +63,18 @@ public struct SpendingLedger: Codable, Equatable, Sendable {
     public private(set) var current: DailySpending
     public private(set) var records: [String: DailyRecord]
     public private(set) var monthlyBudget: Int?
+    public private(set) var monthBudgets: [String: Int]
     public private(set) var onboardingCompleted: Bool
     public private(set) var lastReception: Date?
+    private var restoredDayBudget: Int?
+
+    public var currentBudget: Int { restoredDayBudget ?? settings.dailyBudget }
 
     public init(now: Date = Date(), calendar: Calendar = spendingCalendar()) {
         settings = AppSettings(identity: .student, sources: [.kbCheckSMS])!
         current = DailySpending(day: dayKey(for: now, calendar: calendar))
         records = [:]
+        monthBudgets = [:]
         onboardingCompleted = false
     }
 
@@ -80,36 +85,76 @@ public struct SpendingLedger: Codable, Equatable, Sendable {
         let cutoff = dayKey(for: calendar.date(byAdding: .month, value: -11, to: month)!, calendar: calendar)
         rollCurrentDay(to: today)
         records = records.filter { $0.key >= cutoff }
+        monthBudgets = monthBudgets.filter { $0.key >= String(cutoff.prefix(7)) }
         guard onboardingCompleted, let firstDay else { return }
         let start = max(firstDay, cutoff)
-        guard let date = dateFromKey(start, calendar: calendar), start <= today else { return }
-        fillMissingDays(from: date, through: today, calendar: calendar)
-        records[today] = DailyRecord(total: current.total, budget: settings.dailyBudget)
+        if let date = dateFromKey(start, calendar: calendar), start <= today {
+            fillMissingDays(from: date, through: today, calendar: calendar)
+            recordCurrentDay()
+        }
+        fillMonthBudgets(through: now, cutoff: cutoff, calendar: calendar)
     }
 
     private mutating func rollCurrentDay(to today: String) {
         guard current.day != today else { return }
-        if onboardingCompleted {
-            records[current.day] = DailyRecord(total: current.total,
-                budget: records[current.day]?.budget ?? settings.dailyBudget)
+        if onboardingCompleted, let firstDay,
+           current.day >= firstDay || records[current.day] != nil || current.total > 0 {
+            recordCurrentDay()
         }
-        // shortcut: 날짜를 되돌리면 접힌 합계만 복원하므로 개별 취소 대조는 불가, 거래 ID가 생기면 대체.
-        let restored = records[today]?.total ?? 0
-        current = DailySpending(day: today, approvals: restored > 0 ? [restored] : [])
+        let restored = records[today]
+        current = DailySpending(day: today, carriedTotal: restored?.total ?? 0)
+        restoredDayBudget = restored?.budget
+    }
+
+    private mutating func recordCurrentDay() {
+        records[current.day] = DailyRecord(total: current.total, budget: currentBudget)
+        let key = String(current.day.prefix(7))
+        if monthBudgets[key] == nil {
+            let calendar = spendingCalendar()
+            let month = dateFromKey(key + "-01", calendar: calendar)!
+            monthBudgets[key] = inferredMonthBudget(for: month, calendar: calendar)
+        }
+    }
+
+    private mutating func fillMonthBudgets(through now: Date, cutoff: String, calendar: Calendar) {
+        guard let firstDay else { return }
+        let firstRecord = min(firstDay, records.keys.min() ?? firstDay)
+        let start = max(String(firstRecord.prefix(7)), String(cutoff.prefix(7)))
+        let end = String(dayKey(for: now, calendar: calendar).prefix(7))
+        guard var month = dateFromKey(start + "-01", calendar: calendar), start <= end else { return }
+        while String(dayKey(for: month, calendar: calendar).prefix(7)) <= end {
+            let key = String(dayKey(for: month, calendar: calendar).prefix(7))
+            if monthBudgets[key] == nil { monthBudgets[key] = inferredMonthBudget(for: month, calendar: calendar) }
+            month = calendar.date(byAdding: .month, value: 1, to: month)!
+        }
+    }
+
+    private func inferredMonthBudget(for month: Date, calendar: Calendar) -> Int {
+        if let monthlyBudget { return monthlyBudget }
+        let key = String(dayKey(for: month, calendar: calendar).prefix(7))
+        let first = records.keys.filter { $0.hasPrefix(key + "-") }.min()
+        let latestMonth = String((records.keys.max() ?? current.day).prefix(7))
+        let dailyBudget = key >= latestMonth ? settings.dailyBudget : first.flatMap { records[$0]?.budget } ?? settings.dailyBudget
+        return dailyBudget * calendar.range(of: .day, in: .month, for: month)!.count
     }
 
     private mutating func fillMissingDays(from start: Date, through today: String, calendar: Calendar) {
         var date = start
+        let latestRecordedDay = records.keys.max() ?? dayKey(for: start, calendar: calendar)
         var budget = records[dayKey(for: start, calendar: calendar)]?.budget ?? settings.dailyBudget
         while dayKey(for: date, calendar: calendar) <= today {
             let key = dayKey(for: date, calendar: calendar)
             if let record = records[key] { budget = record.budget }
-            else { records[key] = DailyRecord(total: 0, budget: budget) }
+            else {
+                if key > latestRecordedDay { budget = settings.dailyBudget }
+                records[key] = DailyRecord(total: 0, budget: budget)
+            }
             date = calendar.date(byAdding: .day, value: 1, to: date)!
         }
     }
 
     public mutating func completeOnboarding(now: Date = Date(), calendar: Calendar = spendingCalendar()) {
+        refresh(now: now, calendar: calendar)
         if !onboardingCompleted {
             firstDay = dayKey(for: now, calendar: calendar)
             onboardingCompleted = true
@@ -121,8 +166,15 @@ public struct SpendingLedger: Codable, Equatable, Sendable {
                                        now: Date = Date(), calendar: Calendar = spendingCalendar()) throws {
         if let monthlyBudget, !(1...maximumMoney).contains(monthlyBudget) { throw LedgerError.invalidAmount }
         refresh(now: now, calendar: calendar)
+        let month = String(current.day.prefix(7))
+        let isArchivedMonth = monthBudgets.keys.contains { $0 > month }
         self.settings = settings
         self.monthlyBudget = monthlyBudget
+        if onboardingCompleted, !isArchivedMonth {
+            let calendar = spendingCalendar(timeZone: calendar.timeZone)
+            let days = calendar.range(of: .day, in: .month, for: now)!.count
+            monthBudgets[month] = monthlyBudget ?? settings.dailyBudget * days
+        }
         refresh(now: now, calendar: calendar)
     }
 
@@ -141,7 +193,7 @@ public struct SpendingLedger: Codable, Equatable, Sendable {
         let changed = current.apply(event)
         if changed {
             lastReception = now
-            records[current.day] = DailyRecord(total: current.total, budget: settings.dailyBudget)
+            recordCurrentDay()
         }
         return changed
     }
@@ -153,7 +205,7 @@ public struct SpendingLedger: Codable, Equatable, Sendable {
         guard expectedDay == current.day else { throw LedgerError.dayChanged }
         guard amount > 0, amount <= maximumMoney else { throw LedgerError.invalidAmount }
         guard current.apply(.approval(amount)) else { throw LedgerError.amountOverflow }
-        records[current.day] = DailyRecord(total: current.total, budget: settings.dailyBudget)
+        recordCurrentDay()
     }
 
     public mutating func removeSpending(at index: Int, expected: DailySpending,
@@ -162,7 +214,7 @@ public struct SpendingLedger: Codable, Equatable, Sendable {
         guard onboardingCompleted else { throw LedgerError.notConfigured }
         guard expected.day == current.day else { throw LedgerError.dayChanged }
         guard expected == current, current.removeApproval(at: index) else { throw LedgerError.spendingChanged }
-        records[current.day] = DailyRecord(total: current.total, budget: settings.dailyBudget)
+        recordCurrentDay()
     }
 
     public func summary(for month: Date, now: Date = Date(), calendar: Calendar = spendingCalendar()) -> MonthSummary {
@@ -186,7 +238,9 @@ public struct SpendingLedger: Codable, Equatable, Sendable {
             }
         }
         let comparison = ledger.previousMonthDifference(for: days, total: total, now: now, calendar: calendar)
-        return MonthSummary(days: days, total: total, budget: monthlyBudget ?? settings.dailyBudget * count,
+        let monthKey = String(dayKey(for: start, calendar: calendar).prefix(7))
+        let budget = ledger.monthBudgets[monthKey] ?? ledger.inferredMonthBudget(for: start, calendar: calendar)
+        return MonthSummary(days: days, total: total, budget: budget,
                             comparison: comparison, phraseCounts: phraseCounts)
     }
 
@@ -205,7 +259,7 @@ public struct SpendingLedger: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case settings, firstDay, current, records, monthlyBudget, onboardingCompleted, lastReception
+        case settings, firstDay, current, records, monthlyBudget, monthBudgets, onboardingCompleted, lastReception, restoredDayBudget
     }
 
     public init(from decoder: Decoder) throws {
@@ -215,14 +269,29 @@ public struct SpendingLedger: Codable, Equatable, Sendable {
         current = try values.decode(DailySpending.self, forKey: .current)
         records = try values.decode([String: DailyRecord].self, forKey: .records)
         monthlyBudget = try values.decodeIfPresent(Int.self, forKey: .monthlyBudget)
+        monthBudgets = try values.decodeIfPresent([String: Int].self, forKey: .monthBudgets) ?? [:]
         onboardingCompleted = try values.decode(Bool.self, forKey: .onboardingCompleted)
         lastReception = try values.decodeIfPresent(Date.self, forKey: .lastReception)
+        restoredDayBudget = try values.decodeIfPresent(Int.self, forKey: .restoredDayBudget)
         guard records.keys.allSatisfy(validDayKey),
               firstDay.map(validDayKey) ?? !onboardingCompleted,
               !onboardingCompleted || firstDay != nil,
               monthlyBudget.map({ (1...maximumMoney).contains($0) }) ?? true,
+              restoredDayBudget.map({ (1...maximumMoney).contains($0) }) ?? true,
+              restoredDayBudget.map({ records[current.day]?.budget == $0 }) ?? true,
+              monthBudgets.allSatisfy({ key, amount in
+                  key.count == 7 && validDayKey(key + "-01") && amount > 0 && amount <= maximumMoney * 31
+              }),
               records[current.day].map({ $0.total == current.total }) ?? true else {
             throw LedgerError.invalidStoredData
+        }
+        // shortcut: 이전 버전은 월 예산 이력이 없어 당시 직접 입력값은 복원 불가, 저장된 최신 예산·날짜별 기준으로 추정.
+        let calendar = spendingCalendar()
+        for day in records.keys.sorted() {
+            let key = String(day.prefix(7))
+            if monthBudgets[key] == nil, let month = dateFromKey(key + "-01", calendar: calendar) {
+                monthBudgets[key] = inferredMonthBudget(for: month, calendar: calendar)
+            }
         }
     }
 }

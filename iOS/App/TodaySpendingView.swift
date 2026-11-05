@@ -11,11 +11,18 @@ struct TodaySpendingView: View {
             if let ledger = model.ledger {
                 Section {
                     LabeledContent("오늘 합계", value: money(ledger.current.total))
-                    Text(phrase(total: ledger.current.total, budget: ledger.settings.dailyBudget))
+                    Text(phrase(total: ledger.current.total, budget: ledger.currentBudget))
                 }
-                Section("오늘 지출 \(ledger.current.approvals.count)건") {
+                if ledger.current.carriedTotal > 0 {
+                    Section("이미 보관된 지출") {
+                        LabeledContent("이전 합계", value: money(ledger.current.carriedTotal))
+                        Text("날짜·시간대가 바뀌기 전에 합계로 보관한 기록입니다. 이 금액은 보호하며, 아래 새 지출만 개별 삭제할 수 있습니다.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
+                }
+                Section("새로 기록된 지출 \(ledger.current.approvals.count)건") {
                     if ledger.current.approvals.isEmpty {
-                        Text("아직 기록된 지출이 없어요.").foregroundStyle(.secondary)
+                        Text("새로 기록된 지출이 없어요.").foregroundStyle(.secondary)
                     }
                     ForEach(Array(ledger.current.approvals.enumerated()), id: \.offset) { index, amount in
                         HStack {
@@ -33,7 +40,7 @@ struct TodaySpendingView: View {
                     }
                 }
                 Section {
-                    Text("자동 수집·수동 추가한 지출 모두 삭제할 수 있습니다. 금액만 보관하며 과거 날짜는 수정할 수 없습니다.")
+                    Text("새로 자동 수집·수동 추가한 지출은 모두 삭제할 수 있습니다. 이미 합계로 보관된 기록은 보호합니다. 금액만 보관하며 과거 날짜를 골라 수정할 수는 없습니다.")
                     Text("수동으로 적은 결제나 삭제한 결제 문자가 다시 들어오면 별도로 합산됩니다. 중복은 이 목록에서 삭제해주세요.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }

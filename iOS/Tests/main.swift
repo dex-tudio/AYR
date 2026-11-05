@@ -91,7 +91,7 @@ do {
     }
     try run("unknown storage version cannot be overwritten") {
         var object = try JSONSerialization.jsonObject(with: validData) as! [String: Any]
-        object["version"] = 2
+        object["version"] = 99
         let unsupported = try JSONSerialization.data(withJSONObject: object)
         try unsupported.write(to: file)
         do {
@@ -197,6 +197,25 @@ do {
         try check(latest.current.total == 0 && latest.records[before.current.day]?.total == 100, "yesterday preserved")
         try editable.modify(now: today) { try $0.addSpending(200, expectedDay: latest.current.day, now: today) }
         try check(try editable.read(now: today).current.total == 200, "retained amount retried with confirmed current day")
+    }
+
+    try run("archived total remains protected after storage round trip") {
+        let protectedStore = SpendingStore(directory: directory.appendingPathComponent("protected"))
+        let today = spendingCalendar().startOfDay(for: Date())
+        let tomorrow = spendingCalendar().date(byAdding: .day, value: 1, to: today)!
+        try protectedStore.modify(now: today) {
+            $0.completeOnboarding(now: today)
+            try $0.addSpending(250, expectedDay: $0.current.day, now: today)
+        }
+        _ = try protectedStore.read(now: tomorrow)
+        let restored = try protectedStore.read(now: today)
+        try check(restored.current.carriedTotal == 250 && restored.current.approvals.isEmpty, "old total not exposed as a deletable row")
+        let appended = try protectedStore.modify(now: today) {
+            try $0.addSpending(100, expectedDay: $0.current.day, now: today)
+        }
+        try protectedStore.modify(now: today) { try $0.removeSpending(at: 0, expected: appended.current, now: today) }
+        let remaining = try protectedStore.read(now: today)
+        try check(remaining.current.total == 250 && remaining.current.approvals.isEmpty, "only new spending removed")
     }
     print("Storage checks: \(passed) passed")
 } catch {
