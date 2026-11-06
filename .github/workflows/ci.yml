@@ -17,10 +17,16 @@ jobs:
         run: bash scripts/check-recovery.sh
       - name: Check money input and Swift syntax
         run: bash scripts/check-ios.sh
+      - name: Check TestFlight pipeline success and failure handling
+        run: |
+          apt-get update && apt-get install -y --no-install-recommends python3
+          bash scripts/testflight-check.sh
   ios:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+      - name: Select Xcode 26 or newer
+        run: bash scripts/select-xcode.sh
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Generate Xcode project

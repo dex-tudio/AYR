@@ -42,21 +42,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Select Xcode 26 or newer
-        run: |
-          selected=$(python3 - <<'PY'
-          import re
-          from pathlib import Path
-          candidates = [(tuple(map(int, match.group(1).split('.'))), path) for path in Path('/Applications').glob('Xcode_*.app')
-                        if (match := re.fullmatch(r'Xcode_(\d+(?:\.\d+)*).app', path.name)) and int(match.group(1).split('.')[0]) >= 26]
-          if candidates:
-              print(max(candidates)[1])
-          PY
-          )
-          test -n "$selected"
-          sudo xcode-select --switch "$selected/Contents/Developer"
-          xcodebuild -version
-          major=$(xcodebuild -version | awk '/^Xcode / {split($2, version, "."); print version[1]}')
-          test "$major" -ge 26
+        run: bash scripts/select-xcode.sh
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Archive, export and optionally upload
