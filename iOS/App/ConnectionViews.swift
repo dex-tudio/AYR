@@ -28,14 +28,18 @@ struct DisplayGuideView: View {
 }
 
 struct AutomationGuideView: View {
+    private let keyword = PaymentSource.kbCheckSMS.filterKeyword ?? ""
+
     var body: some View {
         Form {
             Section("KB국민 체크카드 · 문자") {
-                Text("1. 단축어 앱에서 메시지를 받았을 때 실행되는 자동화를 만드세요.")
-                Text("2. 메시지에 포함되는 문구를 KB국민체크로 설정하세요.")
-                Text("3. 확인 없이 즉시 실행하도록 설정하세요.")
-                Text("4. 동작에서 AYR 결제 처리를 추가하세요.")
-                Text("5. 문자 본문 매개변수에 단축어 입력의 메시지 본문을 연결하세요. 고정된 문구를 입력하지 마세요.")
+                Text("처음 한 번만 설정하면 이후 결제 문자는 자동으로 반영됩니다.")
+                Button("1. 문구 복사: (keyword)") { UIPasteboard.general.string = keyword }
+                Link("2. 단축어 앱 열기", destination: URL(string: "shortcuts://")!)
+                Text("3. 자동화 탭에서 새 자동화를 만들고 메시지를 선택하세요.")
+                Text("4. 메시지에 포함되는 문구에 복사한 문구를 붙여 넣고, 즉시 실행을 선택하세요.")
+                Text("5. 동작에서 AYR 결제 처리를 추가하세요.")
+                Text("6. 문자 본문에 단축어 입력의 메시지 본문을 연결하세요. 고정된 문구를 입력하지 마세요.")
             }
             Section {
                 Text("자동화는 앱이 대신 만들 수 없습니다. iOS 버전에 따라 메뉴 이름이 다를 수 있습니다. 같은 결제를 두 번 합산하지 않도록 KB 자동화는 하나만 유지하세요.")
