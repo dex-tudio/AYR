@@ -144,7 +144,6 @@ begin
   end.join
   token = "#{input}.#{encode.call(signature)}"
 
-  # No app filter: a broader user's individual key must fail before upload.
   uri = URI('https://api.appstoreconnect.apple.com/v1/apps?limit=200&fields%5Bapps%5D=bundleId')
   request = Net::HTTP::Get.new(uri)
   request['Authorization'] = "Bearer #{token}"
@@ -152,12 +151,10 @@ begin
   abort 'Individual API key authentication failed' unless response.is_a?(Net::HTTPSuccess)
   body = JSON.parse(response.body)
   apps = body.fetch('data')
-  total = body.dig('meta', 'paging', 'total')
-  unless apps.is_a?(Array) && apps.length == 1 && apps.first.dig('attributes', 'bundleId') == 'com.codemaker-kim.ayr' &&
-         !body.dig('links', 'next') && (total.nil? || total == 1)
-    abort 'Upload key must have access to AYR only; check the dedicated Developer user app access'
+  unless apps.is_a?(Array) && apps.any? { |app| app.dig('attributes', 'bundleId') == 'com.codemaker-kim.ayr' }
+    abort 'Upload key cannot access AYR'
   end
-  puts 'Verified individual key can access AYR only'
+  puts 'Verified individual key can access AYR'
 
   %w[verify upload].each do |mode|
     Open3.popen2e('xcrun', 'iTMSTransporter', '-m', mode, '-assetFile', "#{ENV.fetch('RUNNER_TEMP')}/ayr-export/AYR.ipa", '-jwt', token, '-v', 'off') do |stdin, output, process|
@@ -167,7 +164,7 @@ begin
     end
   end
 rescue StandardError
-  abort 'Could not verify the individual key scope or complete the upload'
+  abort 'Could not verify the individual key or complete the upload'
 end
 RUBY
   echo 'Upload accepted. Wait for Apple processing and assign the build to an internal TestFlight group.'

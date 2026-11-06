@@ -49,6 +49,6 @@ xcodebuild -project AYR.xcodeproj -scheme AYR -configuration Debug -sdk iphonesi
 ## 상태
 
 - 코드 구현: 핵심 로직·저장·앱·온보딩·월별·위젯·Live Activity. QA 정책에 따라 과거 월 예산 보존, 호출 실패 표시, 손상 파일 복구, 복원 합계 보호를 추가했습니다.
-- 실행 검증: Core 50개, 저장소 검사 15개, 복구 검사 12개, 공통 금액 입력·표시 검사 3개와 앱·위젯의 Apple SDK 빌드 통과. TestFlight 스크립트의 모의 검사 15개 통과(실제 Apple API·도구 실행은 대체).
-- TestFlight: 수동 archive·export·선택적 업로드 워크플로 준비. GitHub Actions에서 서명된 IPA 생성까지 확인했습니다. 업로드는 AYR만 접근하는 전용 Developer 사용자의 Individual API Key로 제한하며, 전용 사용자·키와 ASC Secret 2개가 남아 있습니다.
+- 실행 검증: Core 50개, 저장소 검사 15개, 복구 검사 12개, 공통 금액 입력·표시 검사 3개와 앱·위젯의 Apple SDK 빌드 통과. TestFlight 스크립트의 모의 검사 13개 통과(실제 Apple API·도구 실행은 대체).
+- TestFlight: 수동 archive·export·선택적 업로드 워크플로 준비. GitHub Actions에서 서명된 IPA 생성까지 확인했습니다. 업로드는 팀 관리자 계정의 Individual API Key를 쓰고 업로드 후 폐기합니다. 키 발급과 ASC Secret 2개가 남아 있습니다.
 - 미검증: TestFlight 업로드·설치·화면·문자 자동 수신·잠금화면 동작.

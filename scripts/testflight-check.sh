@@ -71,7 +71,7 @@ class << Net::HTTP
     raise 'Unexpected host or TLS setting' unless host == 'api.appstoreconnect.apple.com' && port == 443 && options[:use_ssl]
     http = Object.new
     def http.request(request)
-      raise 'App list must be unfiltered' unless request.path == '/v1/apps?limit=200&fields%5Bapps%5D=bundleId'
+      raise 'Unexpected app list request' unless request.path == '/v1/apps?limit=200&fields%5Bapps%5D=bundleId'
       parts = request['Authorization'].delete_prefix('Bearer ').split('.')
       header, payload = parts.take(2).map { |part| JSON.parse(Base64.urlsafe_decode64(part)) }
       raise 'Wrong individual token' unless header['alg'] == 'ES256' && header['kid'] == ENV['ASC_KEY_ID'] && payload['sub'] == 'user' && !payload.key?('iss')
@@ -85,8 +85,7 @@ class << Net::HTTP
       other = { 'attributes' => { 'bundleId' => 'com.example.other' } }
       scope = ENV.fetch('FIXTURE_SCOPE', 'ayr')
       data = scope == 'extra' ? [app, other] : scope == 'other' ? [other] : [app]
-      body = { 'data' => data, 'links' => { 'next' => scope == 'paginated' ? 'https://api.appstoreconnect.apple.com/v1/apps?cursor=next' : nil },
-               'meta' => { 'paging' => { 'total' => scope == 'total' ? 2 : data.length } } }
+      body = { 'data' => data }
       response = scope == 'unauthorized' ? Net::HTTPUnauthorized.new('1.1', '401', 'Unauthorized') : Net::HTTPOK.new('1.1', '200', 'OK')
       response.body = JSON.generate(body)
       response.instance_variable_set(:@read, true)
@@ -122,10 +121,8 @@ end
              ('missing signing secret', {'APPLE_APP_PROFILE_BASE64': ''}, False),
              ('missing upload secret', {'UPLOAD_TO_TESTFLIGHT': 'true', 'ASC_KEY_ID': ''}, False),
              ('invalid build number', {'GITHUB_RUN_NUMBER': '10000'}, False),
-             ('other app access', {'UPLOAD_TO_TESTFLIGHT': 'true', 'FIXTURE_SCOPE': 'extra'}, False),
+             ('broader key access', {'UPLOAD_TO_TESTFLIGHT': 'true', 'FIXTURE_SCOPE': 'extra'}, True),
              ('wrong app access', {'UPLOAD_TO_TESTFLIGHT': 'true', 'FIXTURE_SCOPE': 'other'}, False),
-             ('paginated app access', {'UPLOAD_TO_TESTFLIGHT': 'true', 'FIXTURE_SCOPE': 'paginated'}, False),
-             ('incomplete app list', {'UPLOAD_TO_TESTFLIGHT': 'true', 'FIXTURE_SCOPE': 'total'}, False),
              ('API authentication failure', {'UPLOAD_TO_TESTFLIGHT': 'true', 'FIXTURE_SCOPE': 'unauthorized'}, False),
              ('invalid individual key', {'UPLOAD_TO_TESTFLIGHT': 'true', 'ASC_PRIVATE_KEY_P8_BASE64': encode(b'invalid-fixture-key')}, False),
              ('validation failure', {'UPLOAD_TO_TESTFLIGHT': 'true', 'FAIL_VERIFY': 'true'}, False)]
@@ -140,12 +137,12 @@ end
         assert not list((root / 'home').rglob('*.p8')), f'{name}: API key remains'
         assert not re.search(r'eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+', result.stdout + result.stderr), f'{name}: JWT exposed in output'
         uploaded = root / 'runner/uploaded'
-        if name == 'upload':
+        if name in ('upload', 'broader key access'):
             assert uploaded.read_text().splitlines() == ['verify', 'upload']
         elif name == 'validation failure':
             assert uploaded.read_text().splitlines() == ['verify']
         else:
             assert not uploaded.exists(), f'{name}: unexpected upload'
         print(f'PASS TestFlight {name}')
-print('TestFlight pipeline checks: 15 passed (Apple API and commands stubbed; ES256 signature verified)')
+print('TestFlight pipeline checks: 13 passed (Apple API and commands stubbed; ES256 signature verified)')
 PY
