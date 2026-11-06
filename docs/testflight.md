@@ -1,6 +1,6 @@
 # Windows에서 TestFlight 설치까지
 
-현재 코드는 앱 등록·서명 정보를 준비하면 GitHub Actions의 `TestFlight` 워크플로로 IPA를 만들고 업로드할 수 있도록 구성했습니다. 서명된 IPA 생성은 확인했고, 실제 업로드·설치는 아직 검증하지 않았습니다. 기본 실행은 **IPA 생성만** 하며, `upload_to_testflight`를 켠 수동 실행에서만 Apple로 업로드합니다.
+현재 코드는 앱 등록·서명 정보를 준비하면 GitHub Actions의 `TestFlight` 워크플로로 IPA를 만들고 업로드할 수 있도록 구성했습니다. 서명된 IPA 생성과 TestFlight 업로드는 확인했고, 휴대폰 설치는 아직 검증하지 않았습니다. 기본 실행은 **IPA 생성만** 하며, `upload_to_testflight`를 켠 수동 실행에서만 Apple로 업로드합니다.
 
 ## 1. Apple 계정에 등록
 

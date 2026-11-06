@@ -44,11 +44,11 @@ xcodegen generate
 xcodebuild -project AYR.xcodeproj -scheme AYR -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
 
-앱 Bundle ID는 `com.codemaker-kim.ayr`, 위젯은 `com.codemaker-kim.ayr.widgets`, App Group은 `group.com.codemaker-kim.ayr.shared`로 맞췄습니다(`project.yml`, `iOS/metadata/*.entitlements`, `iOS/Shared/SpendingStore.swift`). POC용 1024px 앱 아이콘을 추가했습니다. Apple 계정에 앱·위젯 ID와 App Group을 등록·연결하고 App Store Connect 앱을 생성했습니다. 배포 인증서·프로파일과 서명 Secrets를 등록했습니다. 업로드 키 발급과 업로드는 아직 완료하지 않았습니다.
+앱 Bundle ID는 `com.codemaker-kim.ayr`, 위젯은 `com.codemaker-kim.ayr.widgets`, App Group은 `group.com.codemaker-kim.ayr.shared`로 맞췄습니다(`project.yml`, `iOS/metadata/*.entitlements`, `iOS/Shared/SpendingStore.swift`). POC용 1024px 앱 아이콘을 추가했습니다. Apple 계정에 앱·위젯 ID와 App Group을 등록·연결하고 App Store Connect 앱을 생성했습니다. 배포 인증서·프로파일과 Secrets를 등록하고 첫 빌드를 TestFlight에 업로드했습니다.
 
 ## 상태
 
 - 코드 구현: 핵심 로직·저장·앱·온보딩·월별·위젯·Live Activity. QA 정책에 따라 과거 월 예산 보존, 호출 실패 표시, 손상 파일 복구, 복원 합계 보호를 추가했습니다.
 - 실행 검증: Core 50개, 저장소 검사 15개, 복구 검사 12개, 공통 금액 입력·표시 검사 3개와 앱·위젯의 Apple SDK 빌드 통과. TestFlight 스크립트의 모의 검사 9개 통과(실제 Apple API·도구 실행은 대체).
-- TestFlight: 수동 archive·export·선택적 업로드 워크플로 준비. GitHub Actions에서 서명된 IPA 생성까지 확인했습니다. 업로드는 Developer 역할의 Team API Key를 씁니다. 키 발급과 ASC Secret 3개가 남아 있습니다.
-- 미검증: TestFlight 업로드·설치·화면·문자 자동 수신·잠금화면 동작.
+- TestFlight: 수동 archive·export·선택적 업로드 워크플로 준비. Developer 역할의 Team API Key로 빌드 `0.1.0 (3.1)` 업로드와 Apple 처리를 확인했고, 내부 테스터를 초대했습니다.
+- 미검증: 휴대폰 설치·화면·문자 자동 수신·잠금화면 동작.
