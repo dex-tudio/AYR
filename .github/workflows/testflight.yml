@@ -25,7 +25,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install pipeline check dependency
-        run: apt-get update && apt-get install -y --no-install-recommends python3
+        run: apt-get update && apt-get install -y --no-install-recommends python3 ruby
       - name: Check core, storage, recovery and presentation
         run: |
           swift test --package-path Core
@@ -53,7 +53,6 @@ jobs:
           APPLE_APP_PROFILE_BASE64: ${{ secrets.APPLE_APP_PROFILE_BASE64 }}
           APPLE_WIDGET_PROFILE_BASE64: ${{ secrets.APPLE_WIDGET_PROFILE_BASE64 }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_PRIVATE_KEY_P8_BASE64: ${{ secrets.ASC_PRIVATE_KEY_P8_BASE64 }}
           UPLOAD_TO_TESTFLIGHT: ${{ inputs.upload_to_testflight }}
         run: bash scripts/testflight-build.sh

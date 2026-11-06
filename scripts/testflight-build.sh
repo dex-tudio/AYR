@@ -7,7 +7,7 @@ for name in APPLE_TEAM_ID APPLE_DISTRIBUTION_P12_BASE64 APPLE_DISTRIBUTION_P12_P
 done
 case "${UPLOAD_TO_TESTFLIGHT:-false}" in
   true)
-    for name in ASC_KEY_ID ASC_ISSUER_ID ASC_PRIVATE_KEY_P8_BASE64; do
+    for name in ASC_KEY_ID ASC_PRIVATE_KEY_P8_BASE64; do
       if [[ -z "${!name:-}" ]]; then echo "Missing required setting: $name" >&2; exit 1; fi
     done
     [[ "$ASC_KEY_ID" =~ ^[A-Z0-9]+$ ]] || { echo 'Invalid ASC key ID' >&2; exit 1; } ;;
@@ -113,7 +113,7 @@ xcodebuild -quiet -exportArchive -archivePath "$RUNNER_TEMP/AYR.xcarchive" \
 
 if [[ "${UPLOAD_TO_TESTFLIGHT:-false}" == true ]]; then
   mkdir -p "$HOME/private_keys"
-  candidate="$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+  candidate="$HOME/private_keys/ApiKey_${ASC_KEY_ID}.p8"
   [[ ! -e "$candidate" ]] || { echo 'Refusing to overwrite an existing API private key' >&2; exit 1; }
   api_key_path="$candidate"
   export AYR_API_KEY_PATH="$api_key_path"
@@ -122,8 +122,54 @@ import base64, os
 from pathlib import Path
 Path(os.environ['AYR_API_KEY_PATH']).write_bytes(base64.b64decode(os.environ['ASC_PRIVATE_KEY_P8_BASE64'], validate=True))
 PY
-  xcrun altool --validate-app --file "$RUNNER_TEMP/ayr-export/AYR.ipa" --type ios --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
-  xcrun altool --upload-app --file "$RUNNER_TEMP/ayr-export/AYR.ipa" --type ios --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
+  ruby - <<'RUBY'
+require 'base64'
+require 'json'
+require 'net/http'
+require 'openssl'
+require 'open3'
+
+begin
+  encode = ->(value) { Base64.urlsafe_encode64(value, padding: false) }
+  issued = Time.now.to_i - 30
+  header = { alg: 'ES256', kid: ENV.fetch('ASC_KEY_ID'), typ: 'JWT' }
+  payload = { sub: 'user', iat: issued, exp: issued + 1200, aud: 'appstoreconnect-v1' }
+  input = [header, payload].map { |part| encode.call(JSON.generate(part)) }.join('.')
+  key = OpenSSL::PKey.read(File.read(ENV.fetch('AYR_API_KEY_PATH')))
+  raise 'Invalid signing curve' unless key.is_a?(OpenSSL::PKey::EC) && key.group.curve_name == 'prime256v1'
+  signature = OpenSSL::ASN1.decode(key.sign('SHA256', input)).value.map do |integer|
+    bytes = integer.value.to_s(2)
+    raise 'Invalid signature size' if bytes.bytesize > 32
+    bytes.rjust(32, "\0")
+  end.join
+  token = "#{input}.#{encode.call(signature)}"
+
+  # No app filter: a broader user's individual key must fail before upload.
+  uri = URI('https://api.appstoreconnect.apple.com/v1/apps?limit=200&fields%5Bapps%5D=bundleId')
+  request = Net::HTTP::Get.new(uri)
+  request['Authorization'] = "Bearer #{token}"
+  response = Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 20, read_timeout: 30) { |http| http.request(request) }
+  abort 'Individual API key authentication failed' unless response.is_a?(Net::HTTPSuccess)
+  body = JSON.parse(response.body)
+  apps = body.fetch('data')
+  total = body.dig('meta', 'paging', 'total')
+  unless apps.is_a?(Array) && apps.length == 1 && apps.first.dig('attributes', 'bundleId') == 'com.codemaker-kim.ayr' &&
+         !body.dig('links', 'next') && (total.nil? || total == 1)
+    abort 'Upload key must have access to AYR only; check the dedicated Developer user app access'
+  end
+  puts 'Verified individual key can access AYR only'
+
+  %w[verify upload].each do |mode|
+    Open3.popen2e('xcrun', 'iTMSTransporter', '-m', mode, '-assetFile', "#{ENV.fetch('RUNNER_TEMP')}/ayr-export/AYR.ipa", '-jwt', token, '-v', 'off') do |stdin, output, process|
+      stdin.close
+      output.each_line { |line| STDOUT.write(line.gsub(token, '[REDACTED]')) }
+      abort "Transporter #{mode} failed" unless process.value.success?
+    end
+  end
+rescue StandardError
+  abort 'Could not verify the individual key scope or complete the upload'
+end
+RUBY
   echo 'Upload accepted. Wait for Apple processing and assign the build to an internal TestFlight group.'
 else
   echo 'IPA exported. App Store Connect upload was not requested.'
