@@ -49,6 +49,8 @@ elif command == 'xcodebuild':
 elif command == 'xcrun':
     with (Path(os.environ['RUNNER_TEMP']) / 'uploaded').open('a') as stream:
         stream.write(args[1] + '\\n')
+    if os.environ.get('REJECT_BUNDLE') == 'true':
+        print('VERIFY FAILED with 1 error')
 ''')
     stub.chmod(0o755)
     for command in ['security', 'openssl', 'xcodegen', 'xcodebuild', 'xcrun']:
@@ -80,7 +82,8 @@ elif command == 'xcrun':
                  '11111111-1111-1111-1111-111111111111', ExpirationDate=datetime.datetime(2000, 1, 1))}, False),
              ('missing signing secret', {'APPLE_APP_PROFILE_BASE64': ''}, False),
              ('missing upload secret', {'UPLOAD_TO_TESTFLIGHT': 'true', 'ASC_KEY_ID': ''}, False),
-             ('invalid build number', {'GITHUB_RUN_NUMBER': '10000'}, False)]
+             ('invalid build number', {'GITHUB_RUN_NUMBER': '10000'}, False),
+             ('rejected bundle with exit 0', {'UPLOAD_TO_TESTFLIGHT': 'true', 'REJECT_BUNDLE': 'true'}, False)]
     for name, changes, success in cases:
         for marker in ['uploaded', 'generated']:
             (root / 'runner' / marker).unlink(missing_ok=True)
@@ -93,8 +96,10 @@ elif command == 'xcrun':
         uploaded = root / 'runner/uploaded'
         if name == 'upload':
             assert uploaded.read_text().splitlines() == ['--validate-app', '--upload-app']
+        elif name == 'rejected bundle with exit 0':
+            assert uploaded.read_text().splitlines() == ['--validate-app']
         else:
             assert not uploaded.exists(), f'{name}: unexpected upload'
         print(f'PASS TestFlight {name}')
-print('TestFlight pipeline checks: 8 passed (Apple commands stubbed)')
+print('TestFlight pipeline checks: 9 passed (Apple commands stubbed)')
 PY

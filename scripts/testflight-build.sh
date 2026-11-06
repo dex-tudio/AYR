@@ -122,8 +122,11 @@ import base64, os
 from pathlib import Path
 Path(os.environ['AYR_API_KEY_PATH']).write_bytes(base64.b64decode(os.environ['ASC_PRIVATE_KEY_P8_BASE64'], validate=True))
 PY
-  xcrun altool --validate-app --file "$RUNNER_TEMP/ayr-export/AYR.ipa" --type ios --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
-  xcrun altool --upload-app --file "$RUNNER_TEMP/ayr-export/AYR.ipa" --type ios --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
+  for action in --validate-app --upload-app; do
+    # altool can exit 0 after Apple rejects the bundle, so its output decides.
+    xcrun altool "$action" --file "$RUNNER_TEMP/ayr-export/AYR.ipa" --type ios --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID" 2>&1 | tee "$signing_dir/altool.log"
+    if grep -Eq '(VERIFY|UPLOAD) FAILED' "$signing_dir/altool.log"; then echo "altool $action failed" >&2; exit 1; fi
+  done
   echo 'Upload accepted. Wait for Apple processing and assign the build to an internal TestFlight group.'
 else
   echo 'IPA exported. App Store Connect upload was not requested.'
