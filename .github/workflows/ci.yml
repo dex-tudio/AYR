@@ -19,7 +19,7 @@ jobs:
         run: bash scripts/check-ios.sh
       - name: Check TestFlight pipeline success and failure handling
         run: |
-          apt-get update && apt-get install -y --no-install-recommends python3 ruby
+          apt-get update && apt-get install -y --no-install-recommends python3
           bash scripts/testflight-check.sh
   ios:
     runs-on: macos-15

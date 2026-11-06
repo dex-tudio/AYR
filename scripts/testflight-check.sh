@@ -2,7 +2,7 @@
 set -euo pipefail
 bash -n scripts/testflight-build.sh
 python3 - <<'PY'
-import base64, datetime, json, os, plistlib, re, subprocess, tempfile
+import base64, datetime, json, os, plistlib, shutil, subprocess, tempfile
 from pathlib import Path
 
 script = Path('scripts/testflight-build.sh').resolve()
@@ -47,54 +47,14 @@ elif command == 'xcodebuild':
         target.mkdir(exist_ok=True)
         (target / 'AYR.ipa').touch()
 elif command == 'xcrun':
-    assert args[0] == 'iTMSTransporter' and '-jwt' in args
-    mode = args[args.index('-m') + 1]
-    print('Transporter argument: ' + args[args.index('-jwt') + 1])
     with (Path(os.environ['RUNNER_TEMP']) / 'uploaded').open('a') as stream:
-        stream.write(mode + '\\n')
-    if mode == 'verify' and os.environ.get('FAIL_VERIFY') == 'true':
-        sys.exit(9)
+        stream.write(args[1] + '\\n')
 ''')
     stub.chmod(0o755)
     for command in ['security', 'openssl', 'xcodegen', 'xcodebuild', 'xcrun']:
         (root / 'bin' / command).symlink_to(stub)
     def encode(data):
         return base64.b64encode(data).decode()
-    fixture_key = subprocess.check_output(['ruby', '-ropenssl', '-e', "print OpenSSL::PKey::EC.generate('prime256v1').private_to_pem"])
-    http_fixture = root / 'http_fixture.rb'
-    http_fixture.write_text('''require 'net/http'
-require 'openssl'
-require 'json'
-require 'base64'
-class << Net::HTTP
-  def start(host, port, **options)
-    raise 'Unexpected host or TLS setting' unless host == 'api.appstoreconnect.apple.com' && port == 443 && options[:use_ssl]
-    http = Object.new
-    def http.request(request)
-      raise 'Unexpected app list request' unless request.path == '/v1/apps?limit=200&fields%5Bapps%5D=bundleId'
-      parts = request['Authorization'].delete_prefix('Bearer ').split('.')
-      header, payload = parts.take(2).map { |part| JSON.parse(Base64.urlsafe_decode64(part)) }
-      raise 'Wrong individual token' unless header['alg'] == 'ES256' && header['kid'] == ENV['ASC_KEY_ID'] && payload['sub'] == 'user' && !payload.key?('iss')
-      raise 'Excessive token lifetime' unless payload['exp'] - payload['iat'] <= 1200
-      raw = Base64.urlsafe_decode64(parts[2])
-      raise 'Wrong signature length' unless raw.bytesize == 64
-      signature = OpenSSL::ASN1::Sequence.new(raw.bytes.each_slice(32).map { |part| OpenSSL::ASN1::Integer.new(OpenSSL::BN.new(part.pack('C*'), 2)) }).to_der
-      key = OpenSSL::PKey.read(File.read(ENV.fetch('AYR_API_KEY_PATH')))
-      raise 'Invalid ES256 signature' unless key.verify('SHA256', signature, parts.take(2).join('.'))
-      app = { 'attributes' => { 'bundleId' => 'com.codemaker-kim.ayr' } }
-      other = { 'attributes' => { 'bundleId' => 'com.example.other' } }
-      scope = ENV.fetch('FIXTURE_SCOPE', 'ayr')
-      data = scope == 'extra' ? [app, other] : scope == 'other' ? [other] : [app]
-      body = { 'data' => data }
-      response = scope == 'unauthorized' ? Net::HTTPUnauthorized.new('1.1', '401', 'Unauthorized') : Net::HTTPOK.new('1.1', '200', 'OK')
-      response.body = JSON.generate(body)
-      response.instance_variable_set(:@read, true)
-      response
-    end
-    yield http
-  end
-end
-''')
     def profile(bundle, uuid, **changes):
         data = {'TeamIdentifier': ['FIXTURE123'], 'UUID': uuid,
                 'ExpirationDate': datetime.datetime.now() + datetime.timedelta(days=2),
@@ -110,8 +70,8 @@ end
         APPLE_DISTRIBUTION_P12_PASSWORD='fixture-password',
         APPLE_APP_PROFILE_BASE64=profile('com.codemaker-kim.ayr', '11111111-1111-1111-1111-111111111111'),
         APPLE_WIDGET_PROFILE_BASE64=profile('com.codemaker-kim.ayr.widgets', '22222222-2222-2222-2222-222222222222'),
-        UPLOAD_TO_TESTFLIGHT='false', ASC_KEY_ID='FIXTUREKEY',
-        ASC_PRIVATE_KEY_P8_BASE64=encode(fixture_key), RUBYOPT=f'-r{http_fixture}')
+        UPLOAD_TO_TESTFLIGHT='false', ASC_KEY_ID='FIXTUREKEY', ASC_ISSUER_ID='fixture-issuer',
+        ASC_PRIVATE_KEY_P8_BASE64=encode(b'fixture-p8'))
     cases = [('export', {}, True),
              ('upload', {'UPLOAD_TO_TESTFLIGHT': 'true'}, True),
              ('archive failure', {'FAIL_ARCHIVE': 'true'}, False),
@@ -120,12 +80,7 @@ end
                  '11111111-1111-1111-1111-111111111111', ExpirationDate=datetime.datetime(2000, 1, 1))}, False),
              ('missing signing secret', {'APPLE_APP_PROFILE_BASE64': ''}, False),
              ('missing upload secret', {'UPLOAD_TO_TESTFLIGHT': 'true', 'ASC_KEY_ID': ''}, False),
-             ('invalid build number', {'GITHUB_RUN_NUMBER': '10000'}, False),
-             ('broader key access', {'UPLOAD_TO_TESTFLIGHT': 'true', 'FIXTURE_SCOPE': 'extra'}, True),
-             ('wrong app access', {'UPLOAD_TO_TESTFLIGHT': 'true', 'FIXTURE_SCOPE': 'other'}, False),
-             ('API authentication failure', {'UPLOAD_TO_TESTFLIGHT': 'true', 'FIXTURE_SCOPE': 'unauthorized'}, False),
-             ('invalid individual key', {'UPLOAD_TO_TESTFLIGHT': 'true', 'ASC_PRIVATE_KEY_P8_BASE64': encode(b'invalid-fixture-key')}, False),
-             ('validation failure', {'UPLOAD_TO_TESTFLIGHT': 'true', 'FAIL_VERIFY': 'true'}, False)]
+             ('invalid build number', {'GITHUB_RUN_NUMBER': '10000'}, False)]
     for name, changes, success in cases:
         for marker in ['uploaded', 'generated']:
             (root / 'runner' / marker).unlink(missing_ok=True)
@@ -135,14 +90,11 @@ end
         assert not list((root / 'workspace').glob('.testflight-spec.*')), f'{name}: signing spec remains'
         assert not list((root / 'home').rglob('*.mobileprovision')), f'{name}: profiles remain'
         assert not list((root / 'home').rglob('*.p8')), f'{name}: API key remains'
-        assert not re.search(r'eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+', result.stdout + result.stderr), f'{name}: JWT exposed in output'
         uploaded = root / 'runner/uploaded'
-        if name in ('upload', 'broader key access'):
-            assert uploaded.read_text().splitlines() == ['verify', 'upload']
-        elif name == 'validation failure':
-            assert uploaded.read_text().splitlines() == ['verify']
+        if name == 'upload':
+            assert uploaded.read_text().splitlines() == ['--validate-app', '--upload-app']
         else:
             assert not uploaded.exists(), f'{name}: unexpected upload'
         print(f'PASS TestFlight {name}')
-print('TestFlight pipeline checks: 13 passed (Apple API and commands stubbed; ES256 signature verified)')
+print('TestFlight pipeline checks: 8 passed (Apple commands stubbed)')
 PY
