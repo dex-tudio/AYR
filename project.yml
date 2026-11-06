@@ -20,10 +20,11 @@ targets:
     sources:
       - path: iOS/App
       - path: iOS/Shared
+      - path: iOS/Assets.xcassets
     settings:
       base:
-        # TestFlight 준비 시 소유한 Bundle ID와 App Group으로 함께 바꾼다.
-        PRODUCT_BUNDLE_IDENTIFIER: dev.ayr.app
+        PRODUCT_BUNDLE_IDENTIFIER: com.codemaker-kim.ayr
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_ENTITLEMENTS: iOS/metadata/App.entitlements
         INFOPLIST_FILE: iOS/metadata/App-Info.plist
         GENERATE_INFOPLIST_FILE: NO
@@ -42,7 +43,7 @@ targets:
       - path: iOS/Shared
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: dev.ayr.app.widgets
+        PRODUCT_BUNDLE_IDENTIFIER: com.codemaker-kim.ayr.widgets
         CODE_SIGN_ENTITLEMENTS: iOS/metadata/Widgets.entitlements
         INFOPLIST_FILE: iOS/metadata/Widgets-Info.plist
         GENERATE_INFOPLIST_FILE: NO

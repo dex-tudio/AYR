@@ -140,7 +140,7 @@
 ### 설치·계정과 검증 대기
 
 - Windows 사이드로딩 검증은 더 이상 구현의 선행 작업이 아닙니다. TestFlight로 테스트하는 최신 요청을 따릅니다. 유료 가입·결제·자격 증명 설정·업로드는 사용자가 직접 진행하거나 해당 작업을 별도 승인합니다.
-- 프로젝트 식별자는 임시 `dev.ayr.app`, `dev.ayr.app.widgets`, `group.dev.ayr.shared`입니다. TestFlight 전에 본인 소유 값으로 맞추고 앱 아이콘·서명·배포 설정도 준비해야 합니다.
+- 2026-11-06 확정 식별자: 앱 `com.codemaker-kim.ayr`, 위젯 `com.codemaker-kim.ayr.widgets`, App Group `group.com.codemaker-kim.ayr.shared`. 저장소 설정과 POC 앱 아이콘에 반영했습니다. Apple 계정의 식별자·앱 등록과 서명·배포 설정은 아직 완료하지 않았습니다.
 - 메시지 트리거 실기기 테스트는 미실행입니다. 검증만을 위해 새로 결제하지 않고 다음 평소 KB 체크카드 결제에서 확인합니다. 가짜 문자는 실제 KB 발신 검증을 대체하지 않습니다. 문자 원문·금액·상점명은 기록하거나 공유하지 않습니다.
 - 실행 결과·실패와 복구 검사는 [POC 검증 기록](poc-results.md)을 봅니다.
 

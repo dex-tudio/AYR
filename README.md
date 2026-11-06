@@ -34,7 +34,7 @@ docker run --rm -v "$PWD:/repo" -w /repo swift:6.0 bash scripts/check-recovery.s
 docker run --rm -v "$PWD:/repo" -w /repo swift:6.0 bash scripts/check-ios.sh
 ```
 
-PowerShell에서는 볼륨 경로를 `"${PWD}/Core:/pkg"`, `"${PWD}:/repo"`로 씁니다. GitHub Actions는 push·PR마다 같은 검사와 macOS 시뮬레이터 빌드를 실행하도록 설정했습니다. 이전 커밋 `f00c142`의 앱·위젯 빌드는 CI에서 통과했으며, 이번 QA 정책 변경은 아직 푸시하지 않았습니다.
+PowerShell에서는 볼륨 경로를 `"${PWD}/Core:/pkg"`, `"${PWD}:/repo"`로 씁니다. GitHub Actions는 push·PR마다 같은 검사와 macOS 시뮬레이터 빌드를 실행하도록 설정했습니다. 이전 커밋 `f00c142`의 앱·위젯 빌드는 CI에서 통과했으며, 최근 QA 정책 변경분의 Apple SDK 빌드는 아직 확인하지 못했습니다.
 
 Mac에서 프로젝트 생성·서명 없는 빌드:
 
@@ -43,7 +43,7 @@ xcodegen generate
 xcodebuild -project AYR.xcodeproj -scheme AYR -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
 
-TestFlight 준비 시 `dev.ayr.app`, `dev.ayr.app.widgets`, `group.dev.ayr.shared`를 본인 소유 식별자로 함께 교체해야 합니다(`project.yml`, `iOS/metadata/*.entitlements`, `iOS/Shared/SpendingStore.swift`). 서명·App Store Connect·키 등록·업로드는 아직 구성하지 않았습니다.
+앱 Bundle ID는 `com.codemaker-kim.ayr`, 위젯은 `com.codemaker-kim.ayr.widgets`, App Group은 `group.com.codemaker-kim.ayr.shared`로 맞췄습니다(`project.yml`, `iOS/metadata/*.entitlements`, `iOS/Shared/SpendingStore.swift`). POC용 1024px 앱 아이콘을 추가했습니다. Apple 계정의 식별자·앱 등록과 서명·키 등록·업로드는 아직 완료하지 않았습니다.
 
 ## 상태
 

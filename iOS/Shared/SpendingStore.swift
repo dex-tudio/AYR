@@ -27,7 +27,7 @@ enum SpendingStoreError: LocalizedError, Equatable {
 }
 
 struct SpendingStore {
-    static let appGroup = "group.dev.ayr.shared"
+    static let appGroup = "group.com.codemaker-kim.ayr.shared"
     private let directory: URL
 
     init() throws {
