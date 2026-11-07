@@ -25,8 +25,8 @@ public let maximumMoney = Int.max / 366
 
 /// 50% 미만 / 100% 미만 / 그 이상. 곱셈 없이 홀수 기준 금액도 정확하게 비교한다.
 public func phrase(total: Int, budget: Int) -> String {
-    if total < budget / 2 + budget % 2 { return "아직 여유 있어요" }
-    if total < budget { return "슬슬 조절해볼까요?" }
+    if total < budget / 2 + budget % 2 { return "아직은 여유 있네" }
+    if total < budget { return "오늘 좀 쓰는데?" }
     return "님 부자임?"
 }
 

@@ -5,10 +5,10 @@ public enum LedgerError: Error, LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .invalidAmount: "금액은 허용 범위 안의 양의 정수로 입력해주세요."
-        case .amountOverflow: "집계할 수 있는 금액 범위를 초과했습니다."
-        case .notConfigured: "앱에서 초기 설정을 먼저 완료해주세요."
-        case .invalidStoredData: "저장된 기록을 읽을 수 없습니다. 기존 파일은 보존됩니다."
+        case .invalidAmount: "금액은 1원 이상, 입력 가능한 범위 안에서 숫자로만 적어주세요."
+        case .amountOverflow: "기록할 수 있는 최대 금액을 넘었어요."
+        case .notConfigured: "앱에서 시작하기를 먼저 마쳐주세요."
+        case .invalidStoredData: "저장된 기록을 읽지 못했어요. 기존 기록은 그대로 두었어요."
         case .dayChanged: "날짜가 바뀌었어요. 오늘 기록을 확인한 뒤 다시 시도해주세요."
         case .spendingChanged: "지출 목록이 바뀌었어요. 최신 기록을 확인한 뒤 다시 선택해주세요."
         }

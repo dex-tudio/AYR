@@ -16,12 +16,12 @@ enum SpendingStoreError: LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .unavailable: "기기 저장 공간에 접근하지 못했습니다. 기기를 한 번 잠금 해제한 뒤 다시 시도해주세요."
-        case .unreadable: "저장된 기록이 손상되었습니다. 원본은 보존했습니다. 원본을 따로 보관하고 새로 시작할 수 있습니다."
-        case .unwritable: "기록을 저장하지 못했습니다. 입력은 반영되지 않았습니다. 다시 시도해주세요."
-        case .unsupportedVersion: "이 기록은 다른 버전에서 저장되었습니다. 앱을 업데이트해주세요."
-        case .resetNotNeeded: "기록이 정상으로 확인되어 초기화하지 않았습니다. 다시 읽어주세요."
-        case .backupFailed: "손상된 원본을 따로 보관하지 못해 초기화하지 않았습니다. 기존 파일은 유지했습니다."
+        case .unavailable: "기기 안의 기록에 접근하지 못했어요. 잠금을 한 번 해제한 뒤 다시 시도해주세요."
+        case .unreadable: "저장된 기록이 손상됐어요. 원본은 그대로 두었어요. 원본을 따로 보관하고 새로 시작할 수 있어요."
+        case .unwritable: "기록을 저장하지 못했어요. 입력한 내용은 반영되지 않았어요. 다시 시도해주세요."
+        case .unsupportedVersion: "현재 앱에서 읽을 수 없는 버전의 기록이에요. 앱을 업데이트해주세요."
+        case .resetNotNeeded: "기록에 문제가 없어 새로 시작하지 않았어요. 다시 불러와주세요."
+        case .backupFailed: "원본을 따로 보관하지 못해 새로 시작하지 않았어요. 기존 기록은 그대로 두었어요."
         }
     }
 }

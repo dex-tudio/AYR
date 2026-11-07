@@ -24,7 +24,7 @@ struct MonthlyView: View {
 
                     VStack(alignment: .leading, spacing: 12) {
                         Text("어떤 날들이었나요?").font(.headline)
-                        ForEach(["아직 여유 있어요", "슬슬 조절해볼까요?", "님 부자임?"], id: \.self) { phrase in
+                        ForEach(["아직은 여유 있네", "오늘 좀 쓰는데?", "님 부자임?"], id: \.self) { phrase in
                             HStack {
                                 Text(phrase)
                                 Spacer()
@@ -33,7 +33,7 @@ struct MonthlyView: View {
                         }
                     }
                     .ayrCard()
-                    Text("기록 시작 전의 빈 날짜와 미래 날짜는 기록 없음으로 표시합니다. 이후 결제가 없는 날은 0원이며, 자동화 중단으로 놓친 날과 구분할 수 없습니다. 최근 12개월만 보관합니다.")
+                    Text("기록을 시작하기 전과 아직 오지 않은 날은 비워둬요. 결제가 없는 날은 0원으로 보여요. 자동화가 꺼져 놓친 결제도 0원으로 보일 수 있어요. 기록은 최근 12개월만 보관해요.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
                 .padding(20)
@@ -68,7 +68,7 @@ struct MonthlyView: View {
                 Text(comparisonText(difference))
                     .font(.subheadline).foregroundStyle(.secondary)
             } else {
-                Text("지난달 비교 기록이 없어요.")
+                Text("비교할 지난달 기록이 아직 없어요.")
                     .font(.subheadline).foregroundStyle(.secondary)
             }
         }

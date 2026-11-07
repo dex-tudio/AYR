@@ -28,7 +28,7 @@ final class SpendingLedgerTests: XCTestCase {
         XCTAssertEqual(summary.days[3].total, 0)
         XCTAssertNil(summary.days[2].total)
         XCTAssertNil(summary.days[4].total)
-        XCTAssertEqual(summary.phraseCounts["아직 여유 있어요"], 1)
+        XCTAssertEqual(summary.phraseCounts["아직은 여유 있네"], 1)
     }
 
     func testRolloverFoldsApprovalsAndFillsSkippedDaysWithHistoricBudget() throws {
@@ -45,8 +45,8 @@ final class SpendingLedgerTests: XCTestCase {
         XCTAssertEqual(ledger.records["2026-11-04"], DailyRecord(total: 0, budget: 30_000))
         let summary = ledger.summary(for: start, now: later, calendar: calendar)
         XCTAssertEqual(summary.total, 12_000)
-        XCTAssertEqual(summary.phraseCounts["슬슬 조절해볼까요?"], 1)
-        XCTAssertEqual(summary.phraseCounts["아직 여유 있어요"], 3)
+        XCTAssertEqual(summary.phraseCounts["오늘 좀 쓰는데?"], 1)
+        XCTAssertEqual(summary.phraseCounts["아직은 여유 있네"], 3)
     }
 
     func testSettingChangeRephrasesTodayWithoutChangingMoneyOrPastBudget() throws {
@@ -63,8 +63,8 @@ final class SpendingLedgerTests: XCTestCase {
         XCTAssertEqual(ledger.records["2026-11-01"]?.budget, 20_000)
         XCTAssertEqual(summary.budget, 10_000)
         XCTAssertEqual(summary.remaining, -14_000)
-        XCTAssertEqual(summary.phraseCounts["아직 여유 있어요"], 1)
-        XCTAssertEqual(summary.phraseCounts["슬슬 조절해볼까요?"], 1)
+        XCTAssertEqual(summary.phraseCounts["아직은 여유 있네"], 1)
+        XCTAssertEqual(summary.phraseCounts["오늘 좀 쓰는데?"], 1)
     }
 
     func testLeapMonthDefaultBudgetAndMarchComparisonClampToFebruaryEnd() throws {
@@ -175,7 +175,7 @@ final class SpendingLedgerTests: XCTestCase {
         XCTAssertEqual(ledger.current.total, 12_000)
         XCTAssertEqual(ledger.records[ledger.current.day], DailyRecord(total: 12_000, budget: 20_000))
         XCTAssertEqual(ledger.summary(for: now, now: now, calendar: calendar).total, 12_000)
-        XCTAssertEqual(ledger.summary(for: now, now: now, calendar: calendar).phraseCounts["슬슬 조절해볼까요?"], 1)
+        XCTAssertEqual(ledger.summary(for: now, now: now, calendar: calendar).phraseCounts["오늘 좀 쓰는데?"], 1)
         XCTAssertNil(ledger.lastReception)
         try ledger.receive("KB국민체크 AYR테스트", now: now, calendar: calendar)
         let later = now.addingTimeInterval(60)

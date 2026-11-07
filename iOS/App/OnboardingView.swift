@@ -69,10 +69,10 @@ struct OnboardingView: View {
         Form {
             Section("내 생활에 맞는 기준") {
                 IdentityBudgetFields(identity: $identity, budget: $budget)
-                Text("기본값을 사용하거나 원하는 양의 정수를 입력하세요. 나중에 변경해도 오늘 지출은 유지됩니다.")
+                Text("하루에 이 정도면 적당하겠다 싶은 금액을 정해주세요. 나중에 바꿔도 오늘 쓴 돈은 그대로예요.")
                     .font(.footnote).foregroundStyle(.secondary)
                 if settings == nil {
-                    Text("기준 금액을 1~\(money(maximumMoney)) 범위의 숫자로 입력해주세요.")
+                    Text("하루 기준은 1~\(money(maximumMoney)) 사이의 숫자로 적어주세요.")
                         .font(.footnote).foregroundStyle(.red)
                 }
             }
@@ -84,7 +84,7 @@ struct OnboardingView: View {
         Form {
             Section("결제 수단") { SourcePicker(sources: $sources) }
             Section {
-                Text("실제 문자 형식을 확인한 수단만 지원합니다. 같은 결제 수단의 자동화는 하나만 만들어주세요.")
+                Text("지금은 KB국민 체크카드 문자를 연결할 수 있어요. 같은 결제가 두 번 더해지지 않도록 자동화는 하나만 만들어주세요.")
             }
         }
         .ayrScreen()

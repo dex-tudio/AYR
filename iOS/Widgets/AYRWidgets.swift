@@ -41,7 +41,7 @@ private struct SpendingProvider: TimelineProvider {
         do {
             let ledger = try SpendingStore().read(now: date)
             guard ledger.onboardingCompleted else {
-                return SpendingEntry(date: date, total: nil, budget: ledger.settings.dailyBudget, nextBudget: ledger.settings.dailyBudget, message: "AYR에서 초기 설정")
+                return SpendingEntry(date: date, total: nil, budget: ledger.settings.dailyBudget, nextBudget: ledger.settings.dailyBudget, message: "AYR에서 시작하기")
             }
             return SpendingEntry(date: date, total: ledger.current.total, budget: ledger.currentBudget, nextBudget: ledger.settings.dailyBudget, message: nil)
         } catch {
@@ -57,7 +57,7 @@ private struct SpendingWidget: Widget {
                 .containerBackground(AYRTheme.background, for: .widget)
         }
         .configurationDisplayName("오늘 쓴 돈")
-        .description("오늘 지출과 생활 기준에 맞는 문구를 보여줍니다.")
+        .description("오늘 쓴 돈과 소비에 대한 한마디를 바로 확인해요.")
         .supportedFamilies([.accessoryInline, .accessoryRectangular, .systemSmall])
     }
 }
@@ -176,7 +176,7 @@ private struct SpendingLiveActivity: Widget {
     SpendingWidget()
 } timeline: {
     SpendingEntry(date: .now, total: 15_000, budget: 20_000, nextBudget: 20_000, message: nil)
-    SpendingEntry(date: .now, total: nil, budget: 20_000, nextBudget: 20_000, message: "AYR에서 초기 설정")
+    SpendingEntry(date: .now, total: nil, budget: 20_000, nextBudget: 20_000, message: "AYR에서 시작하기")
 }
 
 #Preview("Live Activity", as: .content, using: SpendingActivityAttributes()) {

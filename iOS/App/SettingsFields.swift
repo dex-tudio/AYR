@@ -11,7 +11,7 @@ struct IdentityBudgetFields: View {
         }
         .onChange(of: identity) { _, value in budget = String(value.defaultBudget) }
         MoneyField(title: "하루 기준 금액(원)", text: $budget)
-        Text("신분을 바꾸면 직접 입력했던 금액도 새 신분의 기본값으로 바뀝니다.")
+        Text("신분을 바꾸면 하루 기준도 추천 금액으로 바뀌어요. 원하는 금액으로 다시 정할 수 있어요.")
             .font(.footnote).foregroundStyle(.secondary)
     }
 }

@@ -20,7 +20,7 @@ final class LedgerPolicyTests: XCTestCase {
         XCTAssertEqual(ledger.records.keys.sorted(), ["2026-11-03", "2026-11-04", "2026-11-05"])
         let summary = ledger.summary(for: date("2026-11-01"), now: date("2026-11-05"), calendar: calendar)
         XCTAssertNil(summary.days[1].total)
-        XCTAssertEqual(summary.phraseCounts["아직 여유 있어요"], 3)
+        XCTAssertEqual(summary.phraseCounts["아직은 여유 있네"], 3)
     }
 
     func testReturningToFoldedDayProtectsTotalAndOriginalBudgetAcrossSettingsChange() throws {

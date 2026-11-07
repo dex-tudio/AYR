@@ -31,7 +31,7 @@ struct HomeView: View {
                         Text("\(ledger.settings.identity.title) · 오늘 기준 \(money(ledger.currentBudget))")
                             .font(.subheadline).foregroundStyle(.secondary)
                         if ledger.currentBudget != ledger.settings.dailyBudget {
-                            Text("보관된 날짜의 원래 기준을 유지하고 있어요. 새 기준은 새로 기록하는 날짜에 적용합니다.")
+                            Text("이 날짜에는 당시 기준을 사용해요. 바꾼 기준은 새로 기록하는 날짜부터 적용돼요.")
                                 .font(.footnote).foregroundStyle(.secondary)
                         }
                     }
@@ -47,7 +47,7 @@ struct HomeView: View {
                         TodaySpendingView()
                     } label: {
                         HStack {
-                            Label("오늘 지출 관리", systemImage: "list.bullet.rectangle")
+                            Label("오늘 지출 살펴보기", systemImage: "list.bullet.rectangle")
                             Spacer()
                             Image(systemName: "arrow.up.right")
                         }
@@ -58,12 +58,12 @@ struct HomeView: View {
                     .buttonStyle(.plain)
 
                     VStack(alignment: .leading, spacing: 12) {
-                        Label("결제 문자와 연결", systemImage: "bolt.horizontal.circle")
+                        Label("문자가 오면, 알아서", systemImage: "bolt.horizontal.circle")
                             .font(.headline)
-                        Text("KB국민 체크카드 문자를 단축어 자동화로 전달하면 합계가 바뀝니다.")
+                        Text("KB국민 체크카드 문자를 연결하면 오늘 쓴 돈에 자동으로 더해져요.")
                         ReceptionStatusView(ledger: ledger)
                         NavigationLink { ConnectionView() } label: {
-                            Label("자동화 설정·수신 테스트", systemImage: "arrow.up.right")
+                            Label("결제 문자 연결하기", systemImage: "arrow.up.right")
                                 .frame(minHeight: 44)
                         }
                     }
@@ -73,19 +73,19 @@ struct HomeView: View {
                         Label("잠금화면에서도 바로", systemImage: "lock.rectangle")
                             .font(.headline)
                         Text("잠금화면을 길게 눌러 사용자화 → 위젯 추가 → AYR을 선택하세요.")
-                        Button("Live Activity 시작·새로고침") {
+                        Button("잠금화면에서 보기") {
                             Task { await model.refreshActivity() }
                         }
                         .buttonStyle(AYRPrimaryButtonStyle())
                         if let notice = model.activityNotice {
                             Text(notice).font(.footnote).foregroundStyle(.secondary)
                         }
-                        Text("Live Activity는 계속 고정되지 않습니다. 종료되면 앱 실행이나 다음 결제 처리 때 다시 시작합니다.")
+                        Text("이 버튼으로 띄운 표시는 일정 시간이 지나면 사라져요. 앱을 열거나 다음 결제 문자가 도착하면 다시 시작해요.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                     .ayrCard()
 
-                    Text("동일 문자가 중복 수신되면 두 번 합산될 수 있습니다. KB 취소 문자는 형식 확인 전까지 반영하지 않습니다. 자동화가 꺼져 있던 동안의 결제는 복구되지 않습니다.")
+                    Text("같은 문자가 다시 오면 두 번 더해질 수 있어요. KB 결제 취소는 아직 반영되지 않아요. 자동화가 꺼져 있을 때 놓친 결제는 나중에 불러올 수 없어요.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
                 .padding(20)

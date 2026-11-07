@@ -7,7 +7,7 @@ enum LiveActivityManager {
     static func sync(_ ledger: SpendingLedger) async -> String? {
         guard ledger.onboardingCompleted else { return nil }
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
-            return "Live Activity가 꺼져 있습니다. 설정 앱에서 AYR의 Live Activity를 허용해주세요."
+            return "잠금화면 표시가 꺼져 있어요. 설정 앱에서 AYR의 실시간 현황(Live Activity)을 켜주세요."
         }
         let now = Date()
         let calendar = spendingCalendar()
@@ -24,7 +24,7 @@ enum LiveActivityManager {
             do {
                 _ = try Activity.request(attributes: SpendingActivityAttributes(), content: content, pushType: nil)
             } catch {
-                return "지출은 저장했지만 Live Activity를 시작하지 못했습니다. 앱을 열고 다시 시도해주세요."
+                return "지출은 저장했지만 잠금화면에 띄우지 못했어요. 앱에서 다시 시도해주세요."
             }
         }
         return nil

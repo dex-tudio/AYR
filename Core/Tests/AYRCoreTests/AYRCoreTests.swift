@@ -5,22 +5,22 @@ import XCTest
 final class AYRCoreTests: XCTestCase {
     func testPhraseBoundaries() {
         let budget = Identity.student.defaultBudget // 20,000원
-        XCTAssertEqual(phrase(total: 0, budget: budget), "아직 여유 있어요")
-        XCTAssertEqual(phrase(total: 9_999, budget: budget), "아직 여유 있어요")
-        XCTAssertEqual(phrase(total: 10_000, budget: budget), "슬슬 조절해볼까요?")
-        XCTAssertEqual(phrase(total: 19_999, budget: budget), "슬슬 조절해볼까요?")
+        XCTAssertEqual(phrase(total: 0, budget: budget), "아직은 여유 있네")
+        XCTAssertEqual(phrase(total: 9_999, budget: budget), "아직은 여유 있네")
+        XCTAssertEqual(phrase(total: 10_000, budget: budget), "오늘 좀 쓰는데?")
+        XCTAssertEqual(phrase(total: 19_999, budget: budget), "오늘 좀 쓰는데?")
         XCTAssertEqual(phrase(total: 20_000, budget: budget), "님 부자임?")
     }
 
     func testSameAmountDiffersByIdentity() {
         XCTAssertEqual(phrase(total: 25_000, budget: Identity.student.defaultBudget), "님 부자임?")
-        XCTAssertEqual(phrase(total: 25_000, budget: Identity.jobSeeker.defaultBudget), "슬슬 조절해볼까요?")
-        XCTAssertEqual(phrase(total: 25_000, budget: Identity.worker.defaultBudget), "슬슬 조절해볼까요?")
-        XCTAssertEqual(phrase(total: 24_999, budget: Identity.worker.defaultBudget), "아직 여유 있어요")
+        XCTAssertEqual(phrase(total: 25_000, budget: Identity.jobSeeker.defaultBudget), "오늘 좀 쓰는데?")
+        XCTAssertEqual(phrase(total: 25_000, budget: Identity.worker.defaultBudget), "오늘 좀 쓰는데?")
+        XCTAssertEqual(phrase(total: 24_999, budget: Identity.worker.defaultBudget), "아직은 여유 있네")
     }
 
     func testBanner() {
-        XCTAssertEqual(banner(total: 12_000, budget: 20_000), "오늘 12,000원 · 슬슬 조절해볼까요?")
+        XCTAssertEqual(banner(total: 12_000, budget: 20_000), "오늘 12,000원 · 오늘 좀 쓰는데?")
         XCTAssertEqual(banner(total: 1_234_567, budget: 50_000), "오늘 1,234,567원 · 님 부자임?")
     }
 

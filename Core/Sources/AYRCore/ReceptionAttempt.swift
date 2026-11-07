@@ -5,11 +5,11 @@ public enum ReceptionStatus: String, Codable, Equatable, Sendable {
 
     public var message: String {
         switch self {
-        case .success: "결제를 반영했습니다."
-        case .test: "수신 테스트 완료. 지출에는 합산하지 않았습니다."
-        case .ignored: "지원되는 결제 승인 문자가 아니어서 합산하지 않았습니다."
-        case .overflow: "집계할 수 있는 금액 범위를 초과해 반영하지 못했습니다."
-        case .notConfigured: "앱에서 초기 설정을 먼저 완료해주세요."
+        case .success: "오늘 쓴 돈에 더했어요"
+        case .test: "확인용 문자가 도착했어요. 지출에는 더하지 않았어요."
+        case .ignored: "지원하는 결제 문자가 아니어서 지출에 더하지 않았어요."
+        case .overflow: "기록할 수 있는 최대 금액을 넘어 지출에 더하지 못했어요."
+        case .notConfigured: "앱에서 시작하기를 먼저 마쳐주세요."
         }
     }
 }

@@ -53,11 +53,11 @@ struct AYRApp: App {
             }
             .alert("기록을 새로 시작할까요?", isPresented: $showingResetConfirmation) {
                 Button("취소", role: .cancel) { }
-                Button("원본 보존 후 새로 시작", role: .destructive) {
+                Button("원본 보관 후 새로 시작", role: .destructive) {
                     Task { await model.resetRecords() }
                 }
             } message: {
-                Text("현재 기록은 앱에서 볼 수 없게 됩니다. 원본은 기기 안에 별도로 보존하고, 온보딩부터 새 기록을 시작합니다.")
+                Text("지금 기록은 앱에서 더 이상 볼 수 없어요. 원본은 기기 안에 따로 보관하고, 처음 설정부터 다시 시작해요.")
             }
         }
     }
@@ -65,7 +65,7 @@ struct AYRApp: App {
     private func errorBanner(_ message: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Label(message, systemImage: "exclamationmark.triangle")
-            Button("다시 읽기") { model.reload() }
+            Button("다시 불러오기") { model.reload() }
             if model.canResetRecords { recoveryButton }
         }
         .font(.footnote)
@@ -75,7 +75,7 @@ struct AYRApp: App {
     }
 
     private var recoveryButton: some View {
-        Button("원본을 보존하고 새로 시작", role: .destructive) { showingResetConfirmation = true }
+        Button("원본 보관 후 새로 시작", role: .destructive) { showingResetConfirmation = true }
             .disabled(model.resettingRecords)
     }
 }

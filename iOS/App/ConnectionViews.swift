@@ -8,16 +8,16 @@ struct DisplayGuideView: View {
 
     var body: some View {
         Form {
-            Section("Live Activity") {
-                Label(enabled ? "사용 가능" : "설정에서 허용해주세요", systemImage: enabled ? "checkmark.circle" : "exclamationmark.circle")
-                Text("설정을 마치면 앱 실행과 결제 처리 때 오늘 합계·문구를 표시합니다. 활성 상태는 최대 8시간이며 잠금화면에서도 최대 12시간 후 사라집니다.")
+            Section("실시간 지출") {
+                Label(enabled ? "잠금화면에 표시할 수 있어요" : "설정에서 허용해주세요", systemImage: enabled ? "checkmark.circle" : "exclamationmark.circle")
+                Text("설정을 마치면 앱을 열거나 결제 문자가 올 때 오늘 쓴 돈을 보여줘요. 실시간 표시는 최대 8시간 유지되고, 잠금화면에서도 최대 12시간 뒤 사라져요.")
                 Link("AYR 설정 열기", destination: URL(string: UIApplication.openSettingsURLString)!)
             }
             Section("잠금화면 위젯") {
                 Text("1. 잠금화면을 길게 누르고 사용자화를 선택하세요.")
                 Text("2. 잠금화면 → 위젯 추가 → AYR을 선택하세요.")
-                Text("3. 오늘 합계와 문구가 보이는 위젯을 추가하세요.")
-                Text("날짜가 바뀌면 0원 항목을 예약합니다. 정확한 갱신 시점은 iOS가 결정합니다.")
+                Text("3. 오늘 쓴 돈과 한마디가 보이는 위젯을 추가하세요.")
+                Text("새날이 되면 0원부터 다시 보여줘요. 화면이 바뀌는 시점은 iOS가 정해 반영이 늦어질 수 있어요.")
                     .font(.footnote).foregroundStyle(.secondary)
             }
         }
@@ -40,8 +40,8 @@ struct AutomationGuideView: View {
                     .foregroundStyle(.secondary)
             }
             Section("KB국민 체크카드 · 문자") {
-                Text("처음 한 번만 설정하면 이후 결제 문자는 자동으로 반영됩니다.")
-                Button("1. 문구 복사: (keyword)") { UIPasteboard.general.string = keyword }
+                Text("처음 한 번만 연결하면 다음 결제부터 알아서 더해져요.")
+                Button("1. 연결 문구 복사") { UIPasteboard.general.string = keyword }
                 Link("2. 단축어 앱 열기", destination: URL(string: "shortcuts://")!)
                 Text("3. 자동화 탭에서 새 자동화를 만들고 메시지를 선택하세요.")
                 Text("4. 메시지에 포함되는 문구에 복사한 문구를 붙여 넣고, 즉시 실행을 선택하세요.")
@@ -49,8 +49,8 @@ struct AutomationGuideView: View {
                 Text("6. 문자 본문에 단축어 입력의 메시지 본문을 연결하세요. 고정된 문구를 입력하지 마세요.")
             }
             Section {
-                Text("자동화는 앱이 대신 만들 수 없습니다. iOS 버전에 따라 메뉴 이름이 다를 수 있습니다. 같은 결제를 두 번 합산하지 않도록 KB 자동화는 하나만 유지하세요.")
-                Text("실제 원문·금액·가게 이름을 로그나 메모, 외부 서비스로 보내는 동작은 추가하지 마세요.")
+                Text("자동화는 단축어 앱에서 직접 만들어주세요. iOS 버전에 따라 메뉴 이름이 조금 다를 수 있어요. 같은 결제가 두 번 더해지지 않도록 KB 자동화는 하나만 유지해주세요.")
+                Text("결제 문자와 금액, 가게 이름이 메모나 외부 서비스에 남지 않도록 다른 동작은 추가하지 마세요.")
             }
         }
         .ayrScreen()
@@ -64,16 +64,16 @@ struct ReceptionTestView: View {
 
     var body: some View {
         Form {
-            Section("자동화 수신 테스트") {
-                Text("아래 가짜 문구를 복사해 자기 자신에게 메시지로 보내세요. 테스트는 지출에 합산하지 않습니다.")
+            Section("연결 확인") {
+                Text("아래 확인용 문구를 복사해 나에게 문자로 보내보세요. 오늘 쓴 돈에는 더해지지 않아요.")
                 Text(testMessage).font(.body.monospaced()).textSelection(.enabled)
-                Button("테스트 문구 복사") { UIPasteboard.general.string = testMessage }
-                Button("수신 상태 다시 확인") { model.reload() }
+                Button("확인용 문구 복사") { UIPasteboard.general.string = testMessage }
+                Button("다시 확인하기") { model.reload() }
                 if let ledger = model.ledger { ReceptionStatusView(ledger: ledger) }
             }
             Section {
-                Text("자기 자신에게 보낸 메시지에 반응하지 않을 수도 있습니다. 먼저 온보딩의 시작하기를 눌러 설정을 완료한 뒤, 다음 평소 KB 결제 때 확인하세요. 완료 전 실제 결제 문자는 반영하지 않습니다. 테스트를 위해 새로 결제할 필요는 없습니다.")
-                Text("수신 확인은 나중으로 미뤄도 시작할 수 있습니다. 테스트 문구 수신은 실제 결제 수집 성공을 뜻하지 않습니다.")
+                Text("나에게 보낸 문자는 자동화가 실행되지 않을 수도 있어요. 시작하기를 눌러 설정을 마친 뒤, 다음 평소 KB 결제 때 확인해도 괜찮아요. 설정을 마치기 전에는 실제 결제도 더해지지 않아요. 확인하려고 새로 결제할 필요는 없어요.")
+                Text("연결 확인은 나중에 해도 돼요. 확인용 문자가 도착해도 실제 결제가 잘 더해지는지는 다음 결제 때 확인해주세요.")
                     .font(.footnote).foregroundStyle(.secondary)
             }
         }
@@ -90,11 +90,11 @@ struct ConnectionView: View {
             Section {
                 Label("결제 문자 → 오늘 쓴 돈", systemImage: "bolt.horizontal.circle.fill")
                     .font(.system(.title2, design: .rounded, weight: .bold))
-                Text("자동화 설정 후 수신 테스트로 전달 여부를 확인해요.")
+                Text("결제 문자가 오늘 쓴 돈에 더해지도록 연결해요.")
                     .foregroundStyle(.secondary)
             }
-            NavigationLink("자동화 설정 안내") { AutomationGuideView().navigationTitle("자동화 설정") }
-            NavigationLink("수신 테스트") { ReceptionTestView().navigationTitle("수신 테스트") }
+            NavigationLink("연결 방법 보기") { AutomationGuideView().navigationTitle("결제 문자 연결") }
+            NavigationLink("연결 확인하기") { ReceptionTestView().navigationTitle("연결 확인") }
         }
         .ayrScreen()
         .navigationTitle("결제 문자 연결")
