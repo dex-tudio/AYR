@@ -21,6 +21,7 @@ struct DisplayGuideView: View {
                     .font(.footnote).foregroundStyle(.secondary)
             }
         }
+        .ayrScreen()
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { enabled = ActivityAuthorizationInfo().areActivitiesEnabled }
         }
@@ -32,6 +33,12 @@ struct AutomationGuideView: View {
 
     var body: some View {
         Form {
+            Section {
+                Label("한 번 연결하면, 알아서.", systemImage: "bolt.horizontal.circle.fill")
+                    .font(.system(.title2, design: .rounded, weight: .bold))
+                Text("아래 순서대로 단축어 자동화를 설정해주세요.")
+                    .foregroundStyle(.secondary)
+            }
             Section("KB국민 체크카드 · 문자") {
                 Text("처음 한 번만 설정하면 이후 결제 문자는 자동으로 반영됩니다.")
                 Button("1. 문구 복사: (keyword)") { UIPasteboard.general.string = keyword }
@@ -46,6 +53,7 @@ struct AutomationGuideView: View {
                 Text("실제 원문·금액·가게 이름을 로그나 메모, 외부 서비스로 보내는 동작은 추가하지 마세요.")
             }
         }
+        .ayrScreen()
     }
 }
 
@@ -69,6 +77,7 @@ struct ReceptionTestView: View {
                     .font(.footnote).foregroundStyle(.secondary)
             }
         }
+        .ayrScreen()
         .onReceive(Timer.publish(every: 3, on: .main, in: .common).autoconnect()) { _ in
             if scenePhase == .active { model.reload() }
         }
@@ -78,9 +87,16 @@ struct ReceptionTestView: View {
 struct ConnectionView: View {
     var body: some View {
         List {
+            Section {
+                Label("결제 문자 → 오늘 쓴 돈", systemImage: "bolt.horizontal.circle.fill")
+                    .font(.system(.title2, design: .rounded, weight: .bold))
+                Text("자동화 설정 후 수신 테스트로 전달 여부를 확인해요.")
+                    .foregroundStyle(.secondary)
+            }
             NavigationLink("자동화 설정 안내") { AutomationGuideView().navigationTitle("자동화 설정") }
             NavigationLink("수신 테스트") { ReceptionTestView().navigationTitle("수신 테스트") }
         }
+        .ayrScreen()
         .navigationTitle("결제 문자 연결")
     }
 }

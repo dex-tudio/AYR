@@ -54,7 +54,7 @@ private struct SpendingWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "AYRSpending", provider: SpendingProvider()) { entry in
             SpendingWidgetView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
+                .containerBackground(AYRTheme.background, for: .widget)
         }
         .configurationDisplayName("오늘 쓴 돈")
         .description("오늘 지출과 생활 기준에 맞는 문구를 보여줍니다.")
@@ -71,6 +71,24 @@ private struct SpendingWidgetView: View {
             if let total = entry.total {
                 if family == .accessoryInline {
                     Text("오늘 \(money(total)) · \(phrase(total: total, budget: entry.budget))")
+                } else if family == .systemSmall {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Text("AYR / 오늘").font(.caption.bold())
+                            Spacer()
+                            Image(systemName: "asterisk").accessibilityHidden(true)
+                        }
+                        .foregroundStyle(AYRTheme.accent)
+                        Text(money(total))
+                            .font(.system(.title, design: .rounded, weight: .black))
+                            .monospacedDigit().lineLimit(1).minimumScaleFactor(0.4)
+                        Text(phrase(total: total, budget: entry.budget))
+                            .font(.headline)
+                            .foregroundStyle(spendingColor(total: total, budget: entry.budget))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .foregroundStyle(AYRTheme.text)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 } else {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("오늘 \(money(total))").font(.headline).minimumScaleFactor(0.4).lineLimit(1)
@@ -93,22 +111,29 @@ private struct SpendingLiveActivity: Widget {
         ActivityConfiguration(for: SpendingActivityAttributes.self) { context in
             let expired = context.isStale || context.state.day != dayKey(for: Date())
             let total = expired ? 0 : context.state.total
-            VStack(alignment: .leading, spacing: 6) {
-                Text("오늘 \(money(total))")
-                    .font(.title2.bold()).lineLimit(1).minimumScaleFactor(0.4)
-                Text(expired ? "날짜가 바뀌었어요 · 앱에서 새로고침" : phrase(total: total, budget: context.state.budget))
-                    .font(.subheadline)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("AYR / 오늘 쓴 돈").font(.caption.bold())
+                    Spacer()
+                    Image(systemName: "asterisk").accessibilityHidden(true)
+                }
+                .foregroundStyle(AYRTheme.accent)
+                activityAmount(total)
+                activityMessage(expired: expired, total: total, budget: context.state.budget)
             }
+            .foregroundStyle(AYRTheme.text)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
-            .activityBackgroundTint(.indigo.opacity(0.12))
-            .activitySystemActionForegroundColor(.primary)
+            .activityBackgroundTint(AYRTheme.background)
+            .activitySystemActionForegroundColor(AYRTheme.text)
             .privacySensitive()
         } dynamicIsland: { context in
             let expired = context.isStale || context.state.day != dayKey(for: Date())
             let total = expired ? 0 : context.state.total
             return DynamicIsland {
-                DynamicIslandExpandedRegion(.leading) { Label("오늘", systemImage: "creditcard") }
+                DynamicIslandExpandedRegion(.leading) {
+                    Label("오늘", systemImage: "creditcard").foregroundStyle(AYRTheme.lime)
+                }
                 DynamicIslandExpandedRegion(.trailing) {
                     Text(money(total)).bold().lineLimit(1).minimumScaleFactor(0.4)
                 }
@@ -116,12 +141,48 @@ private struct SpendingLiveActivity: Widget {
                     Text(expired ? "앱에서 새로고침" : phrase(total: total, budget: context.state.budget))
                 }
             } compactLeading: {
-                Image(systemName: "creditcard")
+                Image(systemName: "creditcard").foregroundStyle(AYRTheme.lime)
             } compactTrailing: {
                 Text(money(total)).font(.caption2).lineLimit(1).minimumScaleFactor(0.3)
             } minimal: {
-                Image(systemName: "creditcard")
+                Image(systemName: "creditcard").foregroundStyle(AYRTheme.lime)
             }
         }
     }
+
+    private func activityAmount(_ total: Int) -> some View {
+        Text(money(total))
+            .font(.system(.title2, design: .rounded, weight: .black))
+            .monospacedDigit().lineLimit(1).minimumScaleFactor(0.4)
+    }
+
+    private func activityMessage(expired: Bool, total: Int, budget: Int) -> some View {
+        Text(expired ? "날짜가 바뀌었어요 · 앱에서 새로고침" : phrase(total: total, budget: budget))
+            .font(.subheadline.bold())
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+#Preview("오늘 지출", as: .systemSmall) {
+    SpendingWidget()
+} timeline: {
+    SpendingEntry(date: .now, total: 0, budget: 20_000, nextBudget: 20_000, message: nil)
+    SpendingEntry(date: .now, total: 15_000, budget: 20_000, nextBudget: 20_000, message: nil)
+    SpendingEntry(date: .now, total: maximumMoney, budget: 20_000, nextBudget: 20_000, message: nil)
+    SpendingEntry(date: .now, total: nil, budget: 20_000, nextBudget: 20_000, message: "앱에서 기록 확인")
+}
+
+#Preview("잠금화면", as: .accessoryRectangular) {
+    SpendingWidget()
+} timeline: {
+    SpendingEntry(date: .now, total: 15_000, budget: 20_000, nextBudget: 20_000, message: nil)
+    SpendingEntry(date: .now, total: nil, budget: 20_000, nextBudget: 20_000, message: "AYR에서 초기 설정")
+}
+
+#Preview("Live Activity", as: .content, using: SpendingActivityAttributes()) {
+    SpendingLiveActivity()
+} contentStates: {
+    SpendingActivityAttributes.ContentState(day: dayKey(for: .now), total: 15_000, budget: 20_000)
+    SpendingActivityAttributes.ContentState(day: dayKey(for: .now), total: maximumMoney, budget: 20_000)
+    SpendingActivityAttributes.ContentState(day: "2000-01-01", total: 15_000, budget: 20_000)
 }

@@ -12,6 +12,8 @@ struct TodaySpendingView: View {
                 Section {
                     LabeledContent("오늘 합계", value: money(ledger.current.total))
                     Text(phrase(total: ledger.current.total, budget: ledger.currentBudget))
+                        .font(.title2.bold())
+                        .foregroundStyle(spendingColor(total: ledger.current.total, budget: ledger.currentBudget))
                 }
                 if ledger.current.carriedTotal > 0 {
                     Section("이미 보관된 지출") {
@@ -32,7 +34,7 @@ struct TodaySpendingView: View {
                             Button(role: .destructive) {
                                 pendingRemoval = PendingRemoval(spending: ledger.current, index: index)
                             } label: {
-                                Image(systemName: "trash").padding(8)
+                                Image(systemName: "trash").frame(minWidth: 44, minHeight: 44)
                             }
                             .buttonStyle(.borderless)
                             .accessibilityLabel("\(index + 1)번째 지출 \(money(amount)) 삭제")
@@ -49,6 +51,7 @@ struct TodaySpendingView: View {
                 Section("반영하지 못했어요") { Text(error).foregroundStyle(.red) }
             }
         }
+        .ayrScreen()
         .navigationTitle("오늘 지출")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -123,6 +126,7 @@ private struct AddSpendingView: View {
                 Section("저장하지 못했어요") { Text(error).foregroundStyle(.red) }
             }
         }
+        .ayrScreen()
         .navigationTitle("지출 추가")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

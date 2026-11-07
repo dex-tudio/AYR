@@ -44,9 +44,3 @@ struct SourcePicker: View {
         }
     }
 }
-
-func spendingColor(total: Int, budget: Int) -> Color {
-    if total < budget / 2 + budget % 2 { return .green }
-    if total < budget { return .orange }
-    return .pink
-}

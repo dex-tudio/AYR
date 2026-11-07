@@ -16,10 +16,11 @@ struct MonthlyView: View {
         ScrollView {
             if let ledger = model.ledger {
                 let summary = ledger.summary(for: month)
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 20) {
                     monthNavigation
                     summaryCard(summary)
                     calendarGrid(summary.days)
+                        .ayrCard()
 
                     VStack(alignment: .leading, spacing: 12) {
                         Text("어떤 날들이었나요?").font(.headline)
@@ -27,27 +28,29 @@ struct MonthlyView: View {
                             HStack {
                                 Text(phrase)
                                 Spacer()
-                                Text("\(summary.phraseCounts[phrase, default: 0])일").bold()
+                                Text("\(summary.phraseCounts[phrase, default: 0])일").bold().monospacedDigit()
                             }
                         }
                     }
+                    .ayrCard()
                     Text("기록 시작 전의 빈 날짜와 미래 날짜는 기록 없음으로 표시합니다. 이후 결제가 없는 날은 0원이며, 자동화 중단으로 놓친 날과 구분할 수 없습니다. 최근 12개월만 보관합니다.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
-                .padding()
+                .padding(20)
             }
         }
+        .ayrScreen()
         .navigationTitle("월별 지출")
     }
 
     private var monthNavigation: some View {
         HStack {
-            Button { offset -= 1 } label: { Image(systemName: "chevron.left").padding(8) }
+            Button { offset -= 1 } label: { Image(systemName: "chevron.left").frame(minWidth: 44, minHeight: 44) }
                 .disabled(offset <= -11).accessibilityLabel("이전 달")
             Spacer()
             Text(month, format: .dateTime.year().month()).font(.title2.bold())
             Spacer()
-            Button { offset += 1 } label: { Image(systemName: "chevron.right").padding(8) }
+            Button { offset += 1 } label: { Image(systemName: "chevron.right").frame(minWidth: 44, minHeight: 44) }
                 .disabled(offset >= 0).accessibilityLabel("다음 달")
         }
     }
@@ -56,10 +59,11 @@ struct MonthlyView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("월 합계").font(.headline)
             Text(money(summary.total))
-                .font(.largeTitle.bold()).lineLimit(1).minimumScaleFactor(0.4)
+                .font(.system(.largeTitle, design: .rounded, weight: .black))
+                .monospacedDigit().lineLimit(1).minimumScaleFactor(0.4)
             Text("예산 \(money(summary.budget))")
             Text(summary.remaining >= 0 ? "\(money(summary.remaining)) 남았어요" : "\(money(-summary.remaining)) 초과")
-                .foregroundStyle(summary.remaining >= 0 ? Color.secondary : .pink)
+                .foregroundStyle(summary.remaining >= 0 ? AYRTheme.calm : AYRTheme.exceeded)
             if let difference = summary.comparison {
                 Text(comparisonText(difference))
                     .font(.subheadline).foregroundStyle(.secondary)
@@ -68,9 +72,10 @@ struct MonthlyView: View {
                     .font(.subheadline).foregroundStyle(.secondary)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(20)
-        .background(.indigo.opacity(0.08), in: RoundedRectangle(cornerRadius: 20))
+        .ayrCard()
+        .overlay(alignment: .topLeading) {
+            Capsule().fill(AYRTheme.lime).frame(width: 48, height: 5).padding(.leading, 20)
+        }
     }
 
     private func calendarGrid(_ days: [MonthDay]) -> some View {

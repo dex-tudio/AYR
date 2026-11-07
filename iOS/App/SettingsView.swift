@@ -9,6 +9,8 @@ struct SettingsView: View {
         Form {
             if let ledger = model.ledger {
                 Section("생활 기준") {
+                    Label("내 생활, 내 기준", systemImage: "slider.horizontal.3")
+                        .font(.system(.title2, design: .rounded, weight: .bold))
                     LabeledContent("신분", value: ledger.settings.identity.title)
                     LabeledContent("하루 기준", value: money(ledger.settings.dailyBudget))
                     LabeledContent("월 예산", value: ledger.monthlyBudget.map(money) ?? "하루 기준 × 그 달 일수")
@@ -24,6 +26,7 @@ struct SettingsView: View {
                 }
             }
         }
+        .ayrScreen()
         .navigationTitle("설정")
         .sheet(isPresented: $editing) {
             if let ledger = model.ledger {
@@ -81,6 +84,7 @@ private struct SettingsEditor: View {
                 Section("저장하지 못했어요") { Text(error).foregroundStyle(.red) }
             }
         }
+        .ayrScreen()
         .navigationTitle("기준 수정")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

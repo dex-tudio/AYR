@@ -38,7 +38,8 @@ struct AYRApp: App {
                 }
             }
             .environmentObject(model)
-            .tint(.indigo)
+            .tint(AYRTheme.accent)
+            .background(AYRTheme.background)
             .environment(\.locale, Locale(identifier: "ko_KR"))
             .environment(\.calendar, spendingCalendar())
             .task { await model.refreshActivity() }
