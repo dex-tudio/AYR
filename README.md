@@ -13,6 +13,7 @@ KB 결제 문자 → 단축어 자동화(본문 전달) → AYR App Intent → �
 3. [이전 토스 알림 수집 POC](docs/ios-collection-poc.md): 현재 지원 대상이 아닌 토스의 조사 기록.
 4. [금융 API 검토 기록](docs/financial-api-review.md): 보류한 PWA·금융 API·앱인토스 조사.
 5. [TestFlight 준비와 GitHub 설정](docs/testflight.md): Windows에서 인증서·프로파일·Secrets 준비, 수동 빌드·업로드, 본인 iPhone 설치 순서.
+6. [결제 알림 템플릿·단축어 연결 조사](docs/payment-notification-research.md): 주요 은행·카드사·카카오페이·네이버페이의 알림 경로, 확보한 형식과 미확인 항목.
 
 ## 구조
 
