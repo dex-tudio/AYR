@@ -1,6 +1,14 @@
 import Foundation
 import AYRCore
 
+extension AppSettings {
+    var smsAutomationSources: [PaymentSource] {
+        PaymentSource.allCases.filter {
+            sources.contains($0) && $0.isSupported && $0.filterKeyword?.isEmpty == false
+        }
+    }
+}
+
 func money(_ value: Int) -> String {
     value.formatted(.number.locale(Locale(identifier: "ko_KR"))) + "원"
 }

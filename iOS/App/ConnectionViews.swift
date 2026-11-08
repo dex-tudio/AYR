@@ -29,7 +29,9 @@ struct DisplayGuideView: View {
 }
 
 struct AutomationGuideView: View {
-    private let keyword = PaymentSource.kbCheckSMS.filterKeyword ?? ""
+    @EnvironmentObject private var model: AppModel
+
+    private var sources: [PaymentSource] { model.ledger?.settings.smsAutomationSources ?? [] }
 
     var body: some View {
         Form {
@@ -39,17 +41,34 @@ struct AutomationGuideView: View {
                 Text("아래 순서대로 단축어 자동화를 설정해주세요.")
                     .foregroundStyle(.secondary)
             }
-            Section("KB국민 체크카드 · 문자") {
-                Text("처음 한 번만 연결하면 다음 결제부터 알아서 더해져요.")
-                Button("1. 연결 문구 복사") { UIPasteboard.general.string = keyword }
-                Link("2. 단축어 앱 열기", destination: URL(string: "shortcuts://")!)
-                Text("3. 자동화 탭에서 새 자동화를 만들고 메시지를 선택하세요.")
-                Text("4. 메시지에 포함되는 문구에 복사한 문구를 붙여 넣고, 즉시 실행을 선택하세요.")
-                Text("5. 동작에서 AYR 결제 처리를 추가하세요.")
-                Text("6. 문자 본문에 단축어 입력의 메시지 본문을 연결하세요. 고정된 문구를 입력하지 마세요.")
+            if sources.isEmpty {
+                Section("연결할 수단이 없어요") {
+                    Text("온보딩이나 설정에서 연결할 수 있는 결제 수단을 먼저 선택해주세요.")
+                }
+            }
+            ForEach(sources, id: \.self) { source in
+                Section(source.title) {
+                    if let keyword = source.filterKeyword {
+                        Text(keyword).font(.body.monospaced()).textSelection(.enabled)
+                        Button("연결 문구 복사") { UIPasteboard.general.string = keyword }
+                            .accessibilityLabel("\(source.title) 연결 문구 복사")
+                    }
+                }
+            }
+            if !sources.isEmpty {
+                Section("공통 설정 순서") {
+                    Text("선택한 수단의 연결 문구를 복사한 뒤 같은 순서로 설정해주세요.")
+                    Link("1. 단축어 앱 열기", destination: URL(string: "shortcuts://")!)
+                    Text("2. 자동화 탭에서 새 자동화를 만들고 메시지를 선택하세요.")
+                    Text("3. 메시지에 포함되는 문구에 복사한 문구를 붙여 넣고, 즉시 실행을 선택하세요.")
+                    Text("4. 동작에서 AYR 결제 처리를 추가하세요.")
+                    Text("5. 문자 본문에 단축어 입력의 메시지 본문을 연결하세요. 고정된 문구를 입력하지 마세요.")
+                }
             }
             Section {
-                Text("자동화는 단축어 앱에서 직접 만들어주세요. iOS 버전에 따라 메뉴 이름이 조금 다를 수 있어요. 같은 결제가 두 번 더해지지 않도록 KB 자동화는 하나만 유지해주세요.")
+                Text("자동화는 단축어 앱에서 직접 만들어주세요. iOS 버전에 따라 메뉴 이름이 조금 다를 수 있어요. 같은 문자가 여러 자동화에 걸리면 두 번 더해질 수 있어요. 연결 문구가 겹치는 자동화는 하나만 유지해주세요.")
+                Text("문자 본문 전체를 전달하면 앱이 결제 수단과 금액을 확인해요. 단축어에서 금액을 따로 추출하지 않아도 돼요.")
+                Text("일정 금액 이상만 문자를 받으면 소액 결제가 빠져요. 카드사의 문자 알림 조건도 확인해주세요.")
                 Text("결제 문자와 금액, 가게 이름이 메모나 외부 서비스에 남지 않도록 다른 동작은 추가하지 마세요.")
             }
         }
@@ -60,19 +79,29 @@ struct AutomationGuideView: View {
 struct ReceptionTestView: View {
     @EnvironmentObject private var model: AppModel
     @Environment(\.scenePhase) private var scenePhase
-    private let testMessage = PaymentSource.kbCheckSMS.testMessage
+    private var sources: [PaymentSource] { model.ledger?.settings.smsAutomationSources ?? [] }
 
     var body: some View {
         Form {
-            Section("연결 확인") {
-                Text("아래 확인용 문구를 복사해 나에게 문자로 보내보세요. 오늘 쓴 돈에는 더해지지 않아요.")
-                Text(testMessage).font(.body.monospaced()).textSelection(.enabled)
-                Button("확인용 문구 복사") { UIPasteboard.general.string = testMessage }
+            Section {
+                Text("선택한 수단의 확인용 문구를 복사해 나에게 문자로 보내보세요. 오늘 쓴 돈에는 더해지지 않아요.")
+                if sources.isEmpty {
+                    Text("온보딩이나 설정에서 연결할 수 있는 결제 수단을 먼저 선택해주세요.")
+                }
+            }
+            ForEach(sources, id: \.self) { source in
+                Section(source.title) {
+                    Text(source.testMessage).font(.body.monospaced()).textSelection(.enabled)
+                    Button("확인용 문구 복사") { UIPasteboard.general.string = source.testMessage }
+                        .accessibilityLabel("\(source.title) 확인용 문구 복사")
+                }
+            }
+            Section("마지막 자동화 호출") {
                 Button("다시 확인하기") { model.reload() }
                 if let ledger = model.ledger { ReceptionStatusView(ledger: ledger) }
             }
             Section {
-                Text("나에게 보낸 문자는 자동화가 실행되지 않을 수도 있어요. 시작하기를 눌러 설정을 마친 뒤, 다음 평소 KB 결제 때 확인해도 괜찮아요. 설정을 마치기 전에는 실제 결제도 더해지지 않아요. 확인하려고 새로 결제할 필요는 없어요.")
+                Text("나에게 보낸 문자는 자동화가 실행되지 않을 수도 있어요. 시작하기를 눌러 설정을 마친 뒤, 다음 평소 결제 때 확인해도 괜찮아요. 설정을 마치기 전에는 실제 결제도 더해지지 않아요. 확인하려고 새로 결제할 필요는 없어요.")
                 Text("연결 확인은 나중에 해도 돼요. 확인용 문자가 도착해도 실제 결제가 잘 더해지는지는 다음 결제 때 확인해주세요.")
                     .font(.footnote).foregroundStyle(.secondary)
             }

@@ -12,4 +12,24 @@ for text in ["", "0", "-1", "+1", " 1", "1 ", "1,000", "1.5", "１２３", "١٢
     precondition(positiveMoney(text) == nil)
 }
 print("PASS invalid money input rejected")
-print("Presentation checks: 3 passed")
+let noSources = AppSettings(identity: .student)!
+precondition(noSources.smsAutomationSources.isEmpty)
+print("PASS no automation guide for empty selection")
+
+let unsupported = AppSettings(identity: .student, sources: [.tossNotification])!
+precondition(unsupported.smsAutomationSources.isEmpty)
+print("PASS unsupported sources excluded from SMS guides")
+
+let selected = AppSettings(identity: .student, sources: [.kbCheckSMS, .tossNotification])!
+precondition(selected.smsAutomationSources == [.kbCheckSMS])
+print("PASS only selected supported SMS sources shown")
+
+for source in selected.smsAutomationSources {
+    precondition(source.testMessage.contains(source.filterKeyword!))
+    precondition(selected.parse(source.testMessage) == .test)
+    var day = DailySpending(day: "2026-11-08")
+    precondition(!day.apply(selected.parse(source.testMessage)!))
+    precondition(day.total == 0)
+}
+print("PASS guide test messages match filter without counting spending")
+print("Presentation checks: 7 passed")
