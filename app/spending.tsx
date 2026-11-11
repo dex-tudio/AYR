@@ -22,6 +22,8 @@ export default function Spending() {
   const confirmRemoval = async () => {
     if (!removal) return;
     await store.removeSpending(removal.index, removal.expectedCurrent);
+    // Same as SwiftUI TodaySpendingView: the dialog closes whether or not it saved. A failure is shown below the list
+    // and the user selects again from the latest list (docs/mvp-spec.md 날짜·목록 변경, 실패).
     setRemoval(null);
   };
   return <ScreenFrame title="오늘 지출" onBack={close}>

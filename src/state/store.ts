@@ -33,7 +33,10 @@ export class LedgerStore {
   }
 
   async reload(): Promise<void> {
-    if (this.state.mutating) return;
+    if (!this.state.mutating) await this.read();
+  }
+
+  private async read(): Promise<void> {
     const request = ++this.latest;
     this.set({ refreshing: true });
     try {
@@ -55,7 +58,6 @@ export class LedgerStore {
     ++this.latest; // drops any read still in flight
     this.set({ mutating: true, failure: null });
     let saved = false;
-    let unknown = false;
     try {
       const result = await run();
       const snapshot = assertSnapshotMoney(result.snapshot);
@@ -73,13 +75,12 @@ export class LedgerStore {
         });
       }
     } catch {
-      // Whether the change reached the ledger is unknown, so never retry for the user; show the real list instead.
-      unknown = true;
+      // Whether the change reached the ledger is unknown, so never retry for the user. Stay busy until the real list is read.
       this.set({ failure: { message: unknownOutcome, canReset: false, source } });
+      await this.read();
     } finally {
       this.set({ mutating: false });
     }
-    if (unknown) await this.reload();
     return saved;
   }
 }

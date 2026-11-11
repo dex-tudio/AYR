@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ScreenFrame, useClose } from '../src/components/ScreenFrame';
 import { formatMoney, positiveMoney } from '../src/ledger/contracts';
@@ -10,8 +10,11 @@ export default function AddSpending() {
   const close = useClose('/spending');
   const { store, snapshot, readError, failure, mutating } = useLedger();
   const [text, setText] = useState('');
+  const [done, setDone] = useState(false);
   // The day shown when the form opened; the request names it so a midnight in between is rejected, not misfiled.
   const [expectedDay, setExpectedDay] = useState<string | null>(null);
+  // Set synchronously once the ledger confirmed the save, so a late press while the form is closing cannot save again.
+  const saved = useRef(false);
   useActiveRefresh();
   useEffect(() => { store.clearFailure(); return () => store.clearFailure(); }, [store]);
   const ledger = snapshot?.ledger;
@@ -20,12 +23,12 @@ export default function AddSpending() {
   const maximum = snapshot?.metadata.maximumMoney ?? '0';
   const amount = positiveMoney(text, maximum);
   const dayChanged = expectedDay !== null && today !== null && today !== expectedDay;
-  const canSave = !mutating && amount !== null && expectedDay !== null && !dayChanged && ledger?.onboardingCompleted === true;
+  const canSave = !done && !mutating && amount !== null && expectedDay !== null && !dayChanged && ledger?.onboardingCompleted === true;
   const card = [styles.card, { backgroundColor: theme.surface, borderColor: theme.line }];
   const save = async () => {
-    if (!canSave || expectedDay === null || amount === null) return;
+    if (saved.current || !canSave || expectedDay === null || amount === null) return;
     // The form closes only after the ledger confirmed the save; on failure the typed amount stays.
-    if (await store.addSpending(amount, expectedDay)) close();
+    if (await store.addSpending(amount, expectedDay)) { saved.current = true; setDone(true); close(); }
   };
   const confirmDay = async () => {
     await store.reload();

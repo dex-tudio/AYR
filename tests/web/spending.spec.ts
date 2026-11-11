@@ -137,6 +137,21 @@ test('two presses in the same instant change the ledger once', async ({ page }) 
   await expect(page.getByText('반영하지 못했어요')).toHaveCount(0);
 });
 
+test('a press right after the save succeeded does not save the same spending again', async ({ page }) => {
+  await openSpending(page);
+  await page.getByRole('button', { name: '지출 추가' }).click();
+  await page.getByLabel('금액(원)').fill('1000');
+  // The second press arrives after the save finished but before the form is gone.
+  await addButton(page).evaluate(async (element: HTMLElement) => {
+    element.click();
+    for (let turn = 0; turn < 3; turn++) await new Promise(resolve => setTimeout(resolve, 0));
+    element.click();
+  });
+  await expect(page.getByRole('heading', { name: '오늘 지출' })).toBeVisible();
+  await expect(page.getByTestId('spending-total')).toHaveText('33,400원');
+  await expect(page.getByText('새로 기록된 지출 4건')).toBeVisible();
+});
+
 test('first start cannot add spending', async ({ page }) => {
   await page.goto('/?scenario=firstStart');
   await expect(page.getByText('시작 설정을 먼저 마쳐주세요')).toBeVisible();

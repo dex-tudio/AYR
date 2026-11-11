@@ -259,3 +259,36 @@ test('Swift bridge decodes removal input safely and routes mutations through App
   assert.match(module, /model\.removeSpending\(at:/);
   assert.doesNotMatch(module, /DailySpending\(day:/);
 });
+
+test('after an unknown outcome the mutation stays busy until the re-read finishes', async () => {
+  const preview = new PreviewLedger();
+  let finishRead!: () => void;
+  let hold = false;
+  const service: LedgerService = {
+    getSnapshot: async () => {
+      if (hold) await new Promise<void>(resolve => { finishRead = resolve; });
+      return preview.getSnapshot();
+    },
+    addSpending: async () => { hold = true; throw new Error('bridge failed'); },
+    removeSpending: (index, expected) => preview.removeSpending(index, expected),
+  };
+  const store = new LedgerStore(service);
+  hold = false;
+  await store.reload();
+  const saving = store.addSpending('1000', current(store).day);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.equal(store.getState().mutating, true, 'still busy while the list is being re-read');
+  assert.ok(store.getState().failure);
+  assert.equal(await store.addSpending('1000', current(store).day), false, 'a second press is ignored meanwhile');
+  finishRead();
+  assert.equal(await saving, false);
+  assert.equal(store.getState().mutating, false);
+});
+
+test('native index must be a non-negative safe integer before any native call', async () => {
+  const { ledgerService } = await import('../ledger/service.ios.ts');
+  for (const index of [Number.NaN, Infinity, -Infinity, -1, 1.5, 2 ** 53]) {
+    // The native module is absent here: reaching it would reject with the AYRNative message instead.
+    await assert.rejects(ledgerService.removeSpending(index, 'x'), (error: Error) => error instanceof RangeError && !/AYRNative/.test(error.message), String(index));
+  }
+});

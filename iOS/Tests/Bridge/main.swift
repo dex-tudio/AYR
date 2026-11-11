@@ -49,7 +49,12 @@ do { try removable.removeSpending(at: 0, expected: LedgerBridgeState.removal(ind
 catch LedgerError.spendingChanged {}
 for index in [-1, 3, Int.max, Int.min] { check(LedgerBridgeState.removal(index: index, expectedCurrent: issued) == nil) }
 let wrong = "{\"day\":\"2026-11-11\",\"approvals\":[-5],\"carriedTotal\":0}"
-let overflow = "{\"day\":\"2026-11-11\",\"approvals\":[(maximumMoney),1],\"carriedTotal\":0}"
+let overflow = "{\"day\":\"2026-11-11\",\"approvals\":[\(maximumMoney),1],\"carriedTotal\":0}"
+// 입력이 문법 오류 때문이 아니라 검증 때문에 거부되는지 확인: 모두 유효한 JSON이어야 한다
+for json in [wrong, overflow] { check((try? JSONSerialization.jsonObject(with: Data(json.utf8))) != nil) }
+// 각 값은 범위 안이지만 합이 maximumMoney를 넘는 경우만 거부하고, 합이 정확히 maximumMoney면 받아들인다
+let atMaximum = "{\"day\":\"2026-11-11\",\"approvals\":[\(maximumMoney - 1),1],\"carriedTotal\":0}"
+check(LedgerBridgeState.removal(index: 1, expectedCurrent: Data(atMaximum.utf8).base64EncodedString()) != nil)
 for text in ["", "%%%", " ", issued + "=", Data("{}".utf8).base64EncodedString(), Data("not json".utf8).base64EncodedString(),
              Data(wrong.utf8).base64EncodedString(), Data(overflow.utf8).base64EncodedString()] {
     check(LedgerBridgeState.removal(index: 0, expectedCurrent: text) == nil)
