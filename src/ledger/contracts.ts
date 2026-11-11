@@ -18,12 +18,18 @@ export type AppSnapshot = {
   metadata: { maximumMoney: Money; identities: IdentityInfo[]; sources: SourceInfo[] };
 };
 export type MutationResult = { ok: boolean; snapshot: AppSnapshot };
+/** identity and sources are raw values from metadata; Swift validates them again. monthlyBudget null means daily budget x days in the month. */
+export type SettingsRequest = { identity: string; dailyBudget: Money; monthlyBudget: Money | null; sources: string[]; finishOnboarding: boolean };
+export type SettingsDraft = { identity: string; dailyBudget: string; customMonthly: boolean; monthlyBudget: string; sources: string[] };
 export interface LedgerService {
   getSnapshot(): Promise<AppSnapshot>;
   /** amount is decimal text; expectedDay is the day the user saw when they typed it. */
   addSpending(amount: Money, expectedDay: string): Promise<MutationResult>;
   /** index addresses current.approvals only; expectedCurrent is the opaque value issued with the snapshot. */
   removeSpending(index: number, expectedCurrent: string): Promise<MutationResult>;
+  saveSettings(request: SettingsRequest): Promise<MutationResult>;
+  /** Only after an explicit confirmation, and only for a damaged record: the original is kept aside and a new ledger starts. */
+  resetRecords(): Promise<MutationResult>;
 }
 
 const digits = /^[0-9]+$/;
@@ -44,11 +50,46 @@ export function assertSnapshotMoney(snapshot: AppSnapshot): AppSnapshot {
     if (!Array.isArray(approvals) || typeof expectedCurrent !== 'string') throw bad();
     if (![total, budget, carriedTotal, ...approvals].every(isMoney)) throw bad();
     if (BigInt(total) !== approvals.reduce((sum, amount) => sum + BigInt(amount), BigInt(carriedTotal))) throw bad();
+    const { dailyBudget, monthlyBudget } = ledger.settings;
+    if (!isMoney(dailyBudget) || (monthlyBudget !== null && !isMoney(monthlyBudget))) throw bad();
   }
+  if (!Array.isArray(snapshot.metadata.identities) || !snapshot.metadata.identities.every(item => isMoney(item.defaultBudget))) throw bad();
   return snapshot;
 }
 export function positiveMoney(value: string, maximum: Money): Money | null {
   if (!digits.test(value)) return null;
   const amount = BigInt(value);
   return amount > 0n && amount <= BigInt(maximum) ? amount.toString() : null;
+}
+
+export function identityDefault(metadata: AppSnapshot['metadata'], raw: string): Money | null {
+  return metadata.identities.find(item => item.raw === raw)?.defaultBudget ?? null;
+}
+/** The request the user may send, or null while the form is invalid. Support comes from metadata, never from a JS list. */
+export function settingsRequest(draft: SettingsDraft, metadata: AppSnapshot['metadata'], finishOnboarding: boolean): SettingsRequest | null {
+  const dailyBudget = positiveMoney(draft.dailyBudget, metadata.maximumMoney);
+  const monthlyBudget = draft.customMonthly ? positiveMoney(draft.monthlyBudget, metadata.maximumMoney) : null;
+  const supported = draft.sources.length > 0 && draft.sources.every(raw => metadata.sources.some(item => item.raw === raw && item.isSupported));
+  if (dailyBudget === null || (draft.customMonthly && monthlyBudget === null) || !supported || identityDefault(metadata, draft.identity) === null) return null;
+  return { identity: draft.identity, dailyBudget, monthlyBudget, sources: draft.sources, finishOnboarding };
+}
+
+const two = (value: number) => String(value).padStart(2, '0');
+// Device-local wall time of an instant; engine-independent like formatMoney.
+export function formatInstant(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return `${date.getFullYear()}. ${two(date.getMonth() + 1)}. ${two(date.getDate())}. ${two(date.getHours())}:${two(date.getMinutes())}`;
+}
+type LedgerState = NonNullable<AppSnapshot['ledger']>;
+/** Last automation call as shown to the user. Only a success or test call counts as connected; no call is never success. */
+export function describeReception(ledger: LedgerState): { text: string; success: boolean; at: string | null } {
+  const attempt = ledger.lastAttempt;
+  if (attempt) {
+    return { text: attempt.message, success: attempt.status === 'success' || attempt.status === 'test', at: `마지막 문자 도착: ${formatInstant(attempt.date)}` };
+  }
+  if (ledger.lastReception) {
+    return { text: `마지막 연결: ${formatInstant(ledger.lastReception)} · 다음 문자부터 처리 결과도 함께 보여드려요.`, success: false, at: null };
+  }
+  return { text: '아직 도착한 결제 문자가 없어요', success: false, at: null };
 }

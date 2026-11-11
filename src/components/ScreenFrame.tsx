@@ -5,18 +5,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme';
 
 // Direct entry (browser reload) has no history, so fall back to the spending list.
-export function useClose(fallback: '/spending' | '/') {
+export function useClose(fallback: '/spending' | '/' | '/settings') {
   const router = useRouter();
   return () => { if (router.canGoBack()) router.back(); else router.replace(fallback); };
 }
 
-export function ScreenFrame({ title, onBack, children }: { title: string; onBack: () => void; children: ReactNode }) {
+export function ScreenFrame({ title, onBack, children }: { title: string; onBack?: () => void; children: ReactNode }) {
   const theme = useTheme();
   return <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
     <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
-      <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={onBack} style={styles.back}>
+      {onBack && <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={onBack} style={styles.back}>
         <Text style={{ color: theme.ink, fontSize: 16 }}>‹ 뒤로</Text>
-      </Pressable>
+      </Pressable>}
       <Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>{title}</Text>
       {children}
     </ScrollView>

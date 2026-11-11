@@ -1,9 +1,10 @@
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { TodaySummary } from '../src/components/TodaySummary';
-import { useActiveRefresh, useLedger } from '../src/state/LedgerProvider';
-import { useTheme } from '../src/theme';
+import { ReceptionStatus } from '../../src/components/ReceptionStatus';
+import { TodaySummary } from '../../src/components/TodaySummary';
+import { useActiveRefresh, useLedger } from '../../src/state/LedgerProvider';
+import { useTheme } from '../../src/theme';
 
 export default function Today() {
   const theme = useTheme();
@@ -11,11 +12,8 @@ export default function Today() {
   const { store, snapshot, readError, refreshing } = useLedger();
   useActiveRefresh();
   const message = readError ?? snapshot?.error?.message;
-  // Root marker shown only after getSnapshot succeeded without a read error, whether or not onboarding is done.
-  const connected = snapshot !== null && !readError && !snapshot.error;
   const ready = snapshot?.ledger?.onboardingCompleted === true;
-  return <SafeAreaView testID={connected ? (Platform.OS === 'ios' ? 'ayr-native-connected' : 'ayr-preview-connected') : undefined}
-    style={[styles.safe, { backgroundColor: theme.background }]}>
+  return <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
     <ScrollView contentContainerStyle={styles.page} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void store.reload()} />}>
       {Platform.OS === 'web' && <View style={[styles.preview, { backgroundColor: theme.lime }]}>
         <Text style={{ color: theme.limeInk, fontSize: 14, fontWeight: '700' }}>미리보기 · 가짜 기록</Text>
@@ -27,15 +25,19 @@ export default function Today() {
         <Text style={{ color: theme.exceeded, fontSize: 16 }}>{message}</Text>
         <Pressable accessibilityRole="button" onPress={() => void store.reload()} style={styles.button}><Text style={{ color: theme.ink }}>다시 불러오기</Text></Pressable>
       </View>}
-      {snapshot?.ledger && !snapshot.ledger.onboardingCompleted && <View style={[styles.notice, { backgroundColor: theme.surface }]}>
-        <Text style={{ color: theme.ink, fontSize: 20, fontWeight: '700' }}>시작 설정을 먼저 마쳐주세요</Text>
-        <Text style={{ color: theme.secondary }}>신분·하루 기준·결제 수단을 설정하면 오늘 지출을 볼 수 있어요.</Text>
-      </View>}
       {snapshot && ready && <TodaySummary snapshot={snapshot} />}
       {snapshot && ready && <Pressable accessibilityRole="link" onPress={() => router.push('/spending')}
         style={[styles.notice, { backgroundColor: theme.surface }]}>
         <Text style={{ color: theme.ink, fontSize: 16, fontWeight: '700', minHeight: 44, textAlignVertical: 'center' }}>오늘 지출 보기 · 추가 · 삭제</Text>
       </Pressable>}
+      {snapshot?.ledger && ready && <View style={[styles.notice, { backgroundColor: theme.surface }]}>
+        <Text accessibilityRole="header" style={{ color: theme.ink, fontSize: 16, fontWeight: '700' }}>문자가 오면, 알아서</Text>
+        <Text style={{ color: theme.secondary, fontSize: 14, lineHeight: 22 }}>KB국민 체크카드 문자를 연결하면 오늘 쓴 돈에 자동으로 더해져요.</Text>
+        <ReceptionStatus ledger={snapshot.ledger} />
+        <Pressable accessibilityRole="link" onPress={() => router.push('/connection')} style={styles.button}>
+          <Text style={{ color: theme.ink, fontSize: 16, fontWeight: '700' }}>결제 문자 연결하기</Text>
+        </Pressable>
+      </View>}
     </ScrollView>
   </SafeAreaView>;
 }

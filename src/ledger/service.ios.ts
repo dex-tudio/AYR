@@ -18,4 +18,8 @@ export const ledgerService: LedgerService = {
     if (!Number.isSafeInteger(index) || index < 0) throw new RangeError('삭제할 지출을 다시 선택해주세요.');
     return (await native()).removeSpending(index, expectedCurrent);
   },
+  async saveSettings(request) { return (await native()).saveSettings(request); },
+  async resetRecords() { return (await native()).resetRecords(); },
 };
+// Only the browser can simulate a received text; on iPhone the real shortcut does it.
+export const simulateTestReception: (() => void) | null = null;

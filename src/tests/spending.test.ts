@@ -155,6 +155,8 @@ test('a late read never overwrites a newer mutation result', async () => {
     },
     addSpending: (amount, day) => preview.addSpending(amount, day),
     removeSpending: (index, expected) => preview.removeSpending(index, expected),
+    saveSettings: request => preview.saveSettings(request),
+    resetRecords: () => preview.resetRecords(),
   };
   const store = new LedgerStore(service);
   const stale = await preview.getSnapshot();
@@ -178,6 +180,8 @@ test('reads do not start while a mutation is running', async () => {
     getSnapshot: () => { reads++; return preview.getSnapshot(); },
     addSpending: (amount, day) => preview.addSpending(amount, day),
     removeSpending: (index, expected) => preview.removeSpending(index, expected),
+    saveSettings: request => preview.saveSettings(request),
+    resetRecords: () => preview.resetRecords(),
   };
   const store = new LedgerStore(service);
   await store.reload();
@@ -194,6 +198,8 @@ test('an unknown mutation outcome is reported, re-read, and never retried automa
     getSnapshot: () => preview.getSnapshot(),
     addSpending: async (amount, day) => { adds++; await preview.addSpending(amount, day); throw new Error('bridge failed'); },
     removeSpending: (index, expected) => preview.removeSpending(index, expected),
+    saveSettings: request => preview.saveSettings(request),
+    resetRecords: () => preview.resetRecords(),
   };
   const store = new LedgerStore(service);
   await store.reload();
@@ -214,6 +220,8 @@ test('a mutation result with a malformed amount is rejected as a whole', async (
       return { ok: true, snapshot };
     },
     removeSpending: (index, expected) => preview.removeSpending(index, expected),
+    saveSettings: request => preview.saveSettings(request),
+    resetRecords: () => preview.resetRecords(),
   };
   const store = new LedgerStore(service);
   await store.reload();
@@ -271,6 +279,8 @@ test('after an unknown outcome the mutation stays busy until the re-read finishe
     },
     addSpending: async () => { hold = true; throw new Error('bridge failed'); },
     removeSpending: (index, expected) => preview.removeSpending(index, expected),
+    saveSettings: request => preview.saveSettings(request),
+    resetRecords: () => preview.resetRecords(),
   };
   const store = new LedgerStore(service);
   hold = false;

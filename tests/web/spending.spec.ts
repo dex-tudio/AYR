@@ -154,6 +154,7 @@ test('a press right after the save succeeded does not save the same spending aga
 
 test('first start cannot add spending', async ({ page }) => {
   await page.goto('/?scenario=firstStart');
-  await expect(page.getByText('시작 설정을 먼저 마쳐주세요')).toBeVisible();
+  // A first start is sent to onboarding, where no spending can be added.
+  await expect(page.getByRole('heading', { name: '내 소비의 기준부터.' })).toBeVisible();
   await expect(page.getByRole('link', { name: '오늘 지출 보기 · 추가 · 삭제' })).toHaveCount(0);
 });

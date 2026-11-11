@@ -1,7 +1,48 @@
 import Foundation
 import AYRCore
 
+struct SettingsInput {
+    let settings: AppSettings
+    let monthlyBudget: Int?
+    let finishOnboarding: Bool
+}
+
+/// JS에서 온 설정 입력을 저장 전에 거부한 사유. 메시지는 사용자에게 그대로 보인다.
+enum SettingsRejection: Error {
+    case settings, amount
+
+    var message: String {
+        switch self {
+        case .settings: LedgerBridgeState.invalidSettings
+        case .amount: LedgerError.invalidAmount.errorDescription ?? ""
+        }
+    }
+}
+
 enum LedgerBridgeState {
+    static let invalidSettings = "설정 값을 확인해주세요. 신분과 연결할 수 있는 결제 수단을 골라야 해요."
+
+    /// JS가 보낸 설정 요청을 검증한다. 신분·수단은 raw value와 지원 여부를, 금액은 양수·maximumMoney 이하 10진 문자열만 받는다.
+    /// 지원하지 않거나 비어 있는 수단은 거부하고, 월 예산은 null이면 '하루 기준 × 일수'다.
+    static func settings(_ request: [String: Any]) -> Result<SettingsInput, SettingsRejection> {
+        guard let rawIdentity = request["identity"] as? String, let identity = Identity(rawValue: rawIdentity),
+              let rawSources = request["sources"] as? [String], !rawSources.isEmpty,
+              let finish = request["finishOnboarding"] as? Bool else { return .failure(.settings) }
+        var sources = Set<PaymentSource>()
+        for raw in rawSources {
+            guard let source = PaymentSource(rawValue: raw), source.isSupported else { return .failure(.settings) }
+            sources.insert(source)
+        }
+        guard let budgetText = request["dailyBudget"] as? String, let budget = positiveMoney(budgetText),
+              let settings = AppSettings(identity: identity, dailyBudget: budget, sources: sources) else { return .failure(.amount) }
+        var monthly: Int?
+        if let value = request["monthlyBudget"], !(value is NSNull) {
+            guard let text = value as? String, let amount = positiveMoney(text) else { return .failure(.amount) }
+            monthly = amount
+        }
+        return .success(SettingsInput(settings: settings, monthlyBudget: monthly, finishOnboarding: finish))
+    }
+
     /// 구간 경계는 Core `phrase`가 정한다. 같은 기준에서 합계 0과 기준 금액이 받는 문구로 비교해 임계값을 복제하지 않는다.
     static func band(total: Int, budget: Int) -> String {
         let current = phrase(total: total, budget: budget)

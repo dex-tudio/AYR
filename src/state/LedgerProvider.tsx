@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { AppState } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { ledgerService } from '../ledger/service';
+import { watchActive } from './polling';
 import { LedgerStore } from './store';
 
 const Context = createContext<LedgerStore | null>(null);
@@ -23,8 +24,12 @@ export function useActiveRefresh() {
   const { store } = useLedger();
   useFocusEffect(useCallback(() => {
     void store.reload();
-    const subscription = AppState.addEventListener('change', state => { if (state === 'active') void store.reload(); });
-    const timer = setInterval(() => { if (AppState.currentState === 'active') void store.reload(); }, 30000);
-    return () => { subscription.remove(); clearInterval(timer); };
+    return watchActive(AppState, () => void store.reload(), 30000);
   }, [store]));
+}
+
+// Faster polling for a screen that waits for something to arrive (the connection check). Stops on blur, unmount and in the background.
+export function useActivePolling(ms: number) {
+  const { store } = useLedger();
+  useFocusEffect(useCallback(() => watchActive(AppState, () => void store.reload(), ms), [store, ms]));
 }

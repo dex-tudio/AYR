@@ -1,15 +1,15 @@
-import type { AppSnapshot, LedgerService, MutationResult } from '../ledger/contracts.ts';
+import type { AppSnapshot, LedgerService, MutationResult, SettingsRequest } from '../ledger/contracts.ts';
 import { assertSnapshotMoney } from '../ledger/contracts.ts';
 
 // source tells which screen's action failed, so the screen underneath a form does not repeat the form's failure.
-export type Failure = { message: string; canReset: boolean; source: 'add' | 'remove' };
+export type Failure = { message: string; canReset: boolean; source: 'add' | 'remove' | 'settings' | 'reset' };
 export type StoreState = {
   snapshot: AppSnapshot | null;
   /** The last read failed; the previous snapshot, if any, is the last good one. */
   readError: string | null;
   refreshing: boolean;
   mutating: boolean;
-  /** The last add/remove failed. Only a new attempt or clearFailure() removes it, never a read. */
+  /** The last add/remove/settings/reset failed. Only a new attempt or clearFailure() removes it, never a read. */
   failure: Failure | null;
 };
 
@@ -51,6 +51,8 @@ export class LedgerStore {
 
   addSpending(amount: string, expectedDay: string) { return this.mutate('add', () => this.service.addSpending(amount, expectedDay)); }
   removeSpending(index: number, expectedCurrent: string) { return this.mutate('remove', () => this.service.removeSpending(index, expectedCurrent)); }
+  saveSettings(request: SettingsRequest) { return this.mutate('settings', () => this.service.saveSettings(request)); }
+  resetRecords() { return this.mutate('reset', () => this.service.resetRecords()); }
 
   // One mutation at a time: a second press while one is running is ignored, not queued.
   private async mutate(source: Failure['source'], run: () => Promise<MutationResult>): Promise<boolean> {

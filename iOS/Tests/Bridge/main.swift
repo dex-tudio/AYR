@@ -1,7 +1,7 @@
 import Foundation
 import AYRCore
 
-func check(_ condition: @autoclosure () -> Bool) { precondition(condition()) }
+func check(_ condition: @autoclosure () -> Bool, line: UInt = #line) { precondition(condition(), "check failed at line \(line)") }
 let large = 9_007_199_254_740_993
 let date = ISO8601DateFormatter().date(from: "2026-11-11T12:00:00Z")!
 var ledger = SpendingLedger(now: date)
@@ -65,4 +65,50 @@ let carried = Data(carriedJSON.utf8).base64EncodedString()
 check(LedgerBridgeState.removal(index: 1, expectedCurrent: carried) == nil)
 let carriedPick = LedgerBridgeState.removal(index: 0, expectedCurrent: carried)!
 check(carriedPick.expected.carriedTotal == 12_000 && carriedPick.expected.total == 15_000)
-print("Bridge checks: exact money, invalid inputs, bands, removal input boundary, missing ledger, metadata passed")
+// 설정 입력 경계: 지원 수단·양수 금액·알려진 신분만 받고, 나머지는 저장 전에 사유와 함께 거부한다
+func request(_ patch: [String: Any] = [:]) -> [String: Any] {
+    var base: [String: Any] = ["identity": "student", "dailyBudget": "20000", "monthlyBudget": NSNull(),
+                               "sources": ["kbCheckSMS"], "finishOnboarding": false]
+    for (key, value) in patch { base[key] = value }
+    return base
+}
+func accepted(_ patch: [String: Any] = [:]) -> SettingsInput? {
+    if case .success(let input) = LedgerBridgeState.settings(request(patch)) { return input }
+    return nil
+}
+func rejection(_ patch: [String: Any]) -> SettingsRejection? {
+    if case .failure(let reason) = LedgerBridgeState.settings(request(patch)) { return reason }
+    return nil
+}
+let basic = accepted()!
+check(basic.settings.identity == .student && basic.settings.dailyBudget == 20_000 && basic.settings.sources == [.kbCheckSMS])
+check(basic.monthlyBudget == nil && basic.finishOnboarding == false)
+let custom = accepted(["monthlyBudget": "1500000", "finishOnboarding": true, "identity": "jobSeeker", "dailyBudget": String(maximumMoney)])!
+check(custom.monthlyBudget == 1_500_000 && custom.finishOnboarding && custom.settings.identity == .jobSeeker && custom.settings.dailyBudget == maximumMoney)
+for bad in ["0", "-1", "1.5", " 1", "", "abc", String(maximumMoney + 1)] {
+    check(rejection(["dailyBudget": bad]) == .amount)
+    check(rejection(["monthlyBudget": bad]) == .amount)
+}
+// 숫자 타입은 문자열이 아니므로 거부
+check(rejection(["dailyBudget": 20_000]) == .amount)
+check(rejection(["monthlyBudget": 1_500_000]) == .amount)
+check(rejection(["identity": "nobody"]) == .settings && rejection(["identity": 3]) == .settings)
+check(rejection(["sources": []]) == .settings) // 빈 선택
+check(rejection(["sources": ["tossNotification"]]) == .settings) // 준비 중 수단
+check(rejection(["sources": ["kbCheckSMS", "tossNotification"]]) == .settings)
+check(rejection(["sources": ["nope"]]) == .settings && rejection(["sources": "kbCheckSMS"]) == .settings)
+check(rejection(["finishOnboarding": "yes"]) == .settings)
+check(SettingsRejection.settings.message == LedgerBridgeState.invalidSettings)
+check(SettingsRejection.amount.message == LedgerError.invalidAmount.errorDescription)
+// 신분을 바꿔 저장해도 이미 쌓인 지난 날짜의 기준은 새 기본 기준에 덮이지 않는다(Core 규칙을 입력 경계 이후에도 확인)
+let dayOne = ISO8601DateFormatter().date(from: "2026-11-10T12:00:00Z")!
+let dayTwo = ISO8601DateFormatter().date(from: "2026-11-11T12:00:00Z")!
+var history = SpendingLedger(now: dayOne)
+try history.updateSettings(AppSettings(identity: .worker, dailyBudget: 50_000)!, monthlyBudget: nil, now: dayOne)
+history.completeOnboarding(now: dayOne)
+try history.addSpending(5_000, expectedDay: history.current.day, now: dayOne)
+try history.updateSettings(basic.settings, monthlyBudget: basic.monthlyBudget, now: dayTwo)
+check(history.settings.identity == .student && history.currentBudget == 20_000)
+let pastKey = dayKey(for: dayOne, calendar: spendingCalendar())
+check(history.records[pastKey]?.budget == 50_000 && history.records[pastKey]?.total == 5_000)
+print("Bridge checks: exact money, invalid inputs, bands, removal input boundary, settings input boundary, missing ledger, metadata passed")
