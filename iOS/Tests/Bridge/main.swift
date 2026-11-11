@@ -32,4 +32,32 @@ let failed = try LedgerBridgeState.snapshot(ledger: nil, error: "읽기 실패",
 check(failed["ledger"] is NSNull)
 check((failed["error"] as! [String: Any])["canReset"] as? Bool == true)
 check(JSONSerialization.isValidJSONObject(snapshot))
-print("Bridge checks: exact money, invalid inputs, bands, missing ledger, metadata passed")
+// removal 입력 경계: 발급받은 불투명 값만 받아들이고, 검증 실패는 크래시 없이 nil
+var removable = SpendingLedger(now: date)
+try removable.updateSettings(AppSettings(identity: .worker, dailyBudget: 50_000)!, monthlyBudget: nil, now: date)
+removable.completeOnboarding(now: date)
+for amount in [5_100, 8_700, 5_100] { try removable.addSpending(amount, expectedDay: removable.current.day, now: date) }
+let issued = try JSONEncoder().encode(removable.current).base64EncodedString()
+let stale = try JSONEncoder().encode(removable.current).base64EncodedString()
+let picked = LedgerBridgeState.removal(index: 2, expectedCurrent: issued)!
+check(picked.index == 2 && picked.expected == removable.current)
+try removable.removeSpending(at: picked.index, expected: picked.expected, now: date)
+check(removable.current.approvals == [5_100, 8_700])
+check(removable.current.total == 13_800)
+// 발급 뒤 목록이 바뀌면 Core가 거부한다
+do { try removable.removeSpending(at: 0, expected: LedgerBridgeState.removal(index: 0, expectedCurrent: stale)!.expected, now: date); check(false) }
+catch LedgerError.spendingChanged {}
+for index in [-1, 3, Int.max, Int.min] { check(LedgerBridgeState.removal(index: index, expectedCurrent: issued) == nil) }
+let wrong = "{\"day\":\"2026-11-11\",\"approvals\":[-5],\"carriedTotal\":0}"
+let overflow = "{\"day\":\"2026-11-11\",\"approvals\":[(maximumMoney),1],\"carriedTotal\":0}"
+for text in ["", "%%%", " ", issued + "=", Data("{}".utf8).base64EncodedString(), Data("not json".utf8).base64EncodedString(),
+             Data(wrong.utf8).base64EncodedString(), Data(overflow.utf8).base64EncodedString()] {
+    check(LedgerBridgeState.removal(index: 0, expectedCurrent: text) == nil)
+}
+// 이전 합계는 목록 항목이 아니라 삭제 대상이 될 수 없다
+let carriedJSON = "{\"day\":\"2026-11-11\",\"approvals\":[3000],\"carriedTotal\":12000}"
+let carried = Data(carriedJSON.utf8).base64EncodedString()
+check(LedgerBridgeState.removal(index: 1, expectedCurrent: carried) == nil)
+let carriedPick = LedgerBridgeState.removal(index: 0, expectedCurrent: carried)!
+check(carriedPick.expected.carriedTotal == 12_000 && carriedPick.expected.total == 15_000)
+print("Bridge checks: exact money, invalid inputs, bands, removal input boundary, missing ledger, metadata passed")

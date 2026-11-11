@@ -10,6 +10,15 @@ enum LedgerBridgeState {
         return "caution"
     }
 
+    /// JS가 돌려준 불투명 스냅샷과 index를 검증해 넘긴다. 디코드·범위 검증에 실패하면 nil이고,
+    /// DailySpending(day:approvals:carriedTotal:)의 precondition 초기화는 호출하지 않는다. 이전 합계는 index 대상이 아니다.
+    static func removal(index: Int, expectedCurrent: String) -> (index: Int, expected: DailySpending)? {
+        guard let data = Data(base64Encoded: expectedCurrent),
+              let expected = try? JSONDecoder().decode(DailySpending.self, from: data),
+              expected.approvals.indices.contains(index) else { return nil }
+        return (index, expected)
+    }
+
     static func snapshot(ledger: SpendingLedger?, error: String? = nil, canReset: Bool = false,
                          activityNotice: String? = nil, activityEnabled: Bool = false,
                          resettingRecords: Bool = false) throws -> [String: Any] {

@@ -17,7 +17,14 @@ export type AppSnapshot = {
   activityNotice: string | null; activityEnabled: boolean; resettingRecords: boolean;
   metadata: { maximumMoney: Money; identities: IdentityInfo[]; sources: SourceInfo[] };
 };
-export interface LedgerService { getSnapshot(): Promise<AppSnapshot> }
+export type MutationResult = { ok: boolean; snapshot: AppSnapshot };
+export interface LedgerService {
+  getSnapshot(): Promise<AppSnapshot>;
+  /** amount is decimal text; expectedDay is the day the user saw when they typed it. */
+  addSpending(amount: Money, expectedDay: string): Promise<MutationResult>;
+  /** index addresses current.approvals only; expectedCurrent is the opaque value issued with the snapshot. */
+  removeSpending(index: number, expectedCurrent: string): Promise<MutationResult>;
+}
 
 const digits = /^[0-9]+$/;
 
@@ -26,12 +33,17 @@ export function formatMoney(value: Money): string {
   if (typeof value !== 'string' || !digits.test(value)) throw new RangeError('금액 형식이 올바르지 않아요.');
   return `${BigInt(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')}원`;
 }
-// Rejects a snapshot whose amounts are not decimal text, so the screen shows a read error rather than a wrong amount.
+// Rejects a snapshot whose amounts are not decimal text or do not add up, so the screen shows a read error rather than a wrong amount.
 export function assertSnapshotMoney(snapshot: AppSnapshot): AppSnapshot {
+  const bad = () => new RangeError('기록의 금액 형식이 올바르지 않아요.');
+  const isMoney = (value: unknown): value is string => typeof value === 'string' && digits.test(value);
+  if (!isMoney(snapshot.metadata.maximumMoney)) throw bad();
   const ledger = snapshot.ledger;
   if (ledger) {
-    const values = [ledger.current.total, ledger.current.budget, ledger.current.carriedTotal, ...ledger.current.approvals];
-    if (!values.every(value => typeof value === 'string' && digits.test(value))) throw new RangeError('기록의 금액 형식이 올바르지 않아요.');
+    const { total, budget, carriedTotal, approvals, expectedCurrent } = ledger.current;
+    if (!Array.isArray(approvals) || typeof expectedCurrent !== 'string') throw bad();
+    if (![total, budget, carriedTotal, ...approvals].every(isMoney)) throw bad();
+    if (BigInt(total) !== approvals.reduce((sum, amount) => sum + BigInt(amount), BigInt(carriedTotal))) throw bad();
   }
   return snapshot;
 }

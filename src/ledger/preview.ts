@@ -1,27 +1,73 @@
-import type { AppSnapshot, LedgerService } from './contracts.ts';
+import type { AppSnapshot, LedgerService, MutationResult } from './contracts.ts';
+import { positiveMoney } from './contracts.ts';
 
 const maximumMoney = '25200470046051300';
-export type PreviewScenario = 'default' | 'firstStart' | 'empty' | 'readFailure' | 'maximum' | 'readFailureOnce';
+// Same texts as Core LedgerError.errorDescription; a test compares them with the Swift source.
+export const messages = {
+  invalidAmount: '금액은 1원 이상, 입력 가능한 범위 안에서 숫자로만 적어주세요.',
+  amountOverflow: '기록할 수 있는 최대 금액을 넘었어요.',
+  notConfigured: '앱에서 시작하기를 먼저 마쳐주세요.',
+  invalidStoredData: '저장된 기록을 읽지 못했어요. 기존 기록은 그대로 두었어요.',
+  dayChanged: '날짜가 바뀌었어요. 오늘 기록을 확인한 뒤 다시 시도해주세요.',
+  spendingChanged: '지출 목록이 바뀌었어요. 최신 기록을 확인한 뒤 다시 선택해주세요.',
+} as const;
+const saveFailure = '저장하지 못했어요. 잠시 뒤 다시 시도해주세요.';
+const fakeToday = '2026-11-11';
+const fakeNextDay = '2026-11-12';
+
+export type PreviewScenario = 'default' | 'firstStart' | 'empty' | 'readFailure' | 'maximum' | 'readFailureOnce'
+  | 'carried' | 'saveFailureOnce' | 'dayChange' | 'listChange';
+
+// Session-memory fake ledger. Rules mirror Core with BigInt; it is never used on the native path.
 export class PreviewLedger implements LedgerService {
   scenario: PreviewScenario;
-  constructor(scenario: PreviewScenario = 'default') { this.scenario = scenario; }
   private reads = 0;
-  async getSnapshot(): Promise<AppSnapshot> {
-    // readFailureOnce: the first read fails, a retry succeeds.
-    const failing = this.scenario === 'readFailure' || (this.scenario === 'readFailureOnce' && this.reads++ === 0);
-    const approvals = this.scenario === 'empty' ? [] : this.scenario === 'maximum' ? [maximumMoney] : ['5100', '8700', '18600'];
-    const total = approvals.reduce((sum, amount) => sum + BigInt(amount), 0n);
+  private today = fakeToday;
+  private day = fakeToday;
+  private carried = 0n;
+  private approvals: bigint[];
+  private onboarded: boolean;
+  private interfered = false;
+  private saveFailed = false;
+  constructor(scenario: PreviewScenario = 'default') {
+    this.scenario = scenario;
+    this.onboarded = scenario !== 'firstStart';
+    this.approvals = scenario === 'empty' ? [] : scenario === 'maximum' ? [BigInt(maximumMoney)]
+      : scenario === 'carried' ? [3000n] : [5100n, 8700n, 18600n];
+    if (scenario === 'carried') this.carried = 12000n;
+  }
+  /** Preview-only hook: the device clock passes midnight. */
+  advanceDay() { this.today = fakeNextDay; }
+  /** Preview-only hook: a payment notification is added by the shortcut. */
+  receive(amount: string) { this.approvals.push(BigInt(amount)); }
+
+  private refresh() {
+    if (this.day === this.today) return;
+    this.day = this.today; this.approvals = []; this.carried = 0n;
+  }
+  private get total() { return this.approvals.reduce((sum, amount) => sum + amount, this.carried); }
+  private token() { return `preview:${this.day}:${this.carried}:${this.approvals.join(',')}`; }
+  // dayChange / listChange: the first change finds the world already moved on, like a real midnight or a notification.
+  private interfere() {
+    if (this.interfered) return;
+    this.interfered = true;
+    if (this.scenario === 'dayChange') this.advanceDay();
+    if (this.scenario === 'listChange') this.receive('1200');
+  }
+  private build(error: string | null, unreadable = false): AppSnapshot {
+    const total = this.total;
     const budget = 50000n;
     const band = total < (budget + 1n) / 2n ? 'calm' : total < budget ? 'caution' : 'exceeded';
     return {
-      ledger: failing ? null : {
-        onboardingCompleted: this.scenario !== 'firstStart',
-        current: { day: '2026-11-11', total: total.toString(), budget: budget.toString(), carriedTotal: '0', approvals, expectedCurrent: 'preview-only' },
+      ledger: unreadable ? null : {
+        onboardingCompleted: this.onboarded,
+        current: { day: this.day, total: total.toString(), budget: budget.toString(), carriedTotal: this.carried.toString(),
+          approvals: this.approvals.map(String), expectedCurrent: this.token() },
         settings: { identity: 'worker', dailyBudget: '50000', monthlyBudget: '1500000', sources: ['kbCheckSMS'] },
         lastReception: null, lastAttempt: null,
         phrase: { calm: '아직은 여유 있네', caution: '오늘 좀 쓰는데?', exceeded: '님 부자임?' }[band], band,
       },
-      error: failing ? { message: '기록을 불러오지 못했어요. 다시 시도해주세요.', canReset: false } : null,
+      error: error ? { message: error, canReset: false } : null,
       activityNotice: null, activityEnabled: false, resettingRecords: false,
       metadata: {
         maximumMoney,
@@ -36,5 +82,46 @@ export class PreviewLedger implements LedgerService {
         ],
       },
     };
+  }
+  private fail(message: string): MutationResult {
+    return { ok: false, snapshot: this.build(message, this.scenario === 'readFailure') };
+  }
+  private done(): MutationResult { return { ok: true, snapshot: this.build(null) }; }
+  // saveFailureOnce: the first write is refused and nothing changes; a retry succeeds.
+  private writeRefused() {
+    if (this.scenario !== 'saveFailureOnce' || this.saveFailed) return false;
+    return this.saveFailed = true;
+  }
+
+  async getSnapshot(): Promise<AppSnapshot> {
+    this.refresh();
+    // readFailureOnce: the first read fails, a retry succeeds.
+    const failing = this.scenario === 'readFailure' || (this.scenario === 'readFailureOnce' && this.reads++ === 0);
+    return this.build(failing ? '기록을 불러오지 못했어요. 다시 시도해주세요.' : null, failing);
+  }
+  async addSpending(amount: string, expectedDay: string): Promise<MutationResult> {
+    this.interfere(); this.refresh();
+    if (this.scenario === 'readFailure') return this.fail(messages.invalidStoredData);
+    if (!this.onboarded) return this.fail(messages.notConfigured);
+    if (expectedDay !== this.day) return this.fail(messages.dayChanged);
+    const valid = positiveMoney(amount, maximumMoney);
+    if (!valid) return this.fail(messages.invalidAmount);
+    if (BigInt(valid) > BigInt(maximumMoney) - this.total) return this.fail(messages.amountOverflow);
+    if (this.writeRefused()) return this.fail(saveFailure);
+    this.approvals.push(BigInt(valid));
+    return this.done();
+  }
+  async removeSpending(index: number, expectedCurrent: string): Promise<MutationResult> {
+    this.interfere(); this.refresh();
+    if (this.scenario === 'readFailure') return this.fail(messages.invalidStoredData);
+    if (!this.onboarded) return this.fail(messages.notConfigured);
+    const day = /^preview:([0-9-]+):/.exec(expectedCurrent)?.[1];
+    if (day !== undefined && day !== this.day) return this.fail(messages.dayChanged);
+    if (expectedCurrent !== this.token() || !Number.isSafeInteger(index) || index < 0 || index >= this.approvals.length) {
+      return this.fail(messages.spendingChanged);
+    }
+    if (this.writeRefused()) return this.fail(saveFailure);
+    this.approvals.splice(index, 1);
+    return this.done();
   }
 }
