@@ -49,6 +49,10 @@ final class AYRModule: Module {
         }
         let model = appModel()
         model.reload()
+        // reload()는 읽기 실패 때 이전 장부를 그대로 두고 error만 설정하므로, 낡은 달을 돌려주지 않도록 먼저 거절한다.
+        if let message = model.error {
+            throw Exception(name: "ERR_AYR_LEDGER_UNAVAILABLE", description: message)
+        }
         guard let ledger = model.ledger, let month = LedgerBridgeState.month(ledger: ledger, offset: offset) else {
             throw Exception(name: "ERR_AYR_LEDGER_UNAVAILABLE", description: model.error ?? "기록을 불러오지 못했어요.")
         }

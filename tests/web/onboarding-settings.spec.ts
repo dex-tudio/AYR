@@ -277,7 +277,10 @@ test('a screen with a failed read shows the error with a retry and then its cont
   // The pages are static files, so the connection screen is reached through the app: Today, Settings, then its link.
   await page.goto('/?scenario=laterReadFailureOnce');
   await page.getByRole('tab', { name: '설정' }).click();
-  await page.getByRole('link', { name: '결제 문자 연결하기' }).click();
+  const link = page.getByRole('link', { name: '결제 문자 연결하기' });
+  // Centered first: at the bottom edge the tab bar can cover the link and the click keeps retrying.
+  await link.evaluate(element => element.scrollIntoView({ block: 'center' }));
+  await link.click();
   await expect(page.getByRole('heading', { name: '결제 문자 연결' })).toBeVisible();
   await expect(page.getByRole('alert')).toContainText('기록을 불러오지 못했어요');
   await page.getByRole('button', { name: '다시 불러오기' }).click();
