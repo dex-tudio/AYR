@@ -104,8 +104,8 @@ security set-key-partition-list -S apple-tool:,apple:,codesign: -k "$keychain_pa
 security list-keychains -d user -s "$keychain_path"
 
 cd "$GITHUB_WORKSPACE"
-xcodegen generate --spec "$overlay_spec"
-xcodebuild -quiet -project AYR.xcodeproj -scheme AYR -configuration Release \
+bash scripts/prepare-ios.sh "$overlay_spec"
+xcodebuild -quiet -workspace AYR.xcworkspace -scheme AYR -configuration Release \
   -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/AYR.xcarchive" \
   "CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER.$GITHUB_RUN_ATTEMPT" archive
 xcodebuild -quiet -exportArchive -archivePath "$RUNNER_TEMP/AYR.xcarchive" \

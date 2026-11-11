@@ -2,3 +2,13 @@
 *.xcodeproj/
 DerivedData/
 .swiftpm/
+node_modules/
+.expo/
+dist-web/
+dist-ios/
+playwright-report/
+test-results/
+Pods/
+*.xcworkspace/
+build/
+.xcode.env*

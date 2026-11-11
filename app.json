@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "name": "님 부자임?",
+    "slug": "ayr",
+    "scheme": "ayr",
+    "platforms": ["ios", "web"],
+    "ios": { "bundleIdentifier": "com.codemaker-kim.ayr" },
+    "plugins": ["expo-router"],
+    "web": { "bundler": "metro", "output": "single" }
+  }
+}

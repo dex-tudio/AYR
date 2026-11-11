@@ -3,6 +3,7 @@ import AYRCore
 
 @main
 struct AYRApp: App {
+    @UIApplicationDelegateAdaptor(AYRExpoAppDelegate.self) private var appDelegate
     @StateObject private var model = AppModel()
     @Environment(\.scenePhase) private var scenePhase
     @State private var showingResetConfirmation = false
@@ -10,7 +11,9 @@ struct AYRApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if let ledger = model.ledger {
+                if usesRNPreview {
+                    RNRootView()
+                } else if let ledger = model.ledger {
                     VStack(spacing: 0) {
                         if let error = model.error { errorBanner(error) }
                         if ledger.onboardingCompleted {
@@ -60,6 +63,14 @@ struct AYRApp: App {
                 Text("지금 기록은 앱에서 더 이상 볼 수 없어요. 원본은 기기 안에 따로 보관하고, 처음 설정부터 다시 시작해요.")
             }
         }
+    }
+
+    private var usesRNPreview: Bool {
+#if DEBUG
+        ProcessInfo.processInfo.arguments.contains("--ayr-rn-preview")
+#else
+        false
+#endif
     }
 
     private func errorBanner(_ message: String) -> some View {

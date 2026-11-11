@@ -45,6 +45,13 @@ jobs:
         run: bash scripts/select-xcode.sh
       - name: Install XcodeGen
         run: brew install xcodegen
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.18.0
+          cache: npm
+      - run: npm ci
+      - name: Install CocoaPods
+        run: sudo gem install cocoapods -v 1.16.2 --no-document
       - name: Archive, export and optionally upload
         env:
           APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
@@ -57,6 +64,13 @@ jobs:
           ASC_PRIVATE_KEY_P8_BASE64: ${{ secrets.ASC_PRIVATE_KEY_P8_BASE64 }}
           UPLOAD_TO_TESTFLIGHT: ${{ inputs.upload_to_testflight }}
         run: bash scripts/testflight-build.sh
+      - name: Save resolved Podfile.lock
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testflight-pod-lock
+          path: Podfile.lock
+          if-no-files-found: warn
       - name: Save signed IPA and debug symbols
         uses: actions/upload-artifact@v4
         with:

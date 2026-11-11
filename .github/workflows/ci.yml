@@ -21,6 +21,24 @@ jobs:
         run: |
           apt-get update && apt-get install -y --no-install-recommends python3
           bash scripts/testflight-check.sh
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.18.0
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck && npm test
+      - run: npm run build:web && npm run build:ios-js
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:web
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: web-failure
+          path: test-results/
   ios:
     runs-on: macos-15
     steps:
@@ -29,11 +47,25 @@ jobs:
         run: bash scripts/select-xcode.sh
       - name: Install XcodeGen
         run: brew install xcodegen
-      - name: Generate Xcode project
-        run: xcodegen generate
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.18.0
+          cache: npm
+      - run: npm ci
+      - name: Install CocoaPods
+        run: sudo gem install cocoapods -v 1.16.2 --no-document
+      - name: Prepare workspace
+        run: bash scripts/prepare-ios.sh
+      - name: Save first resolved Podfile.lock
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-pod-lock
+          path: Podfile.lock
+          if-no-files-found: error
       - name: Build app and widgets without signing
-        run: >-
-          xcodebuild -project AYR.xcodeproj -scheme AYR
-          -configuration Debug -sdk iphonesimulator
-          -destination 'generic/platform=iOS Simulator'
-          CODE_SIGNING_ALLOWED=NO build
+        run: |
+          for configuration in Debug Release; do
+            xcodebuild -workspace AYR.xcworkspace -scheme AYR \
+              -configuration "$configuration" -sdk iphonesimulator \
+              -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+          done
