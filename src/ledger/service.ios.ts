@@ -1,4 +1,5 @@
 import type { LedgerService } from './contracts.ts';
+import { invalidMonthMessage, validMonthOffset } from './contracts.ts';
 
 async function native(): Promise<LedgerService> {
   try {
@@ -12,6 +13,11 @@ async function native(): Promise<LedgerService> {
 // Amounts stay decimal text and the opaque expectedCurrent is passed through untouched; Swift validates both.
 export const ledgerService: LedgerService = {
   async getSnapshot() { return (await native()).getSnapshot(); },
+  async getMonth(offset) {
+    // Expo converts numbers to Int by rounding, so only an integer inside -11...0 goes to Swift (which checks again).
+    if (!validMonthOffset(offset)) throw new RangeError(invalidMonthMessage);
+    return (await native()).getMonth(offset);
+  },
   async addSpending(amount, expectedDay) { return (await native()).addSpending(amount, expectedDay); },
   async removeSpending(index, expectedCurrent) {
     // Expo converts numbers to Int by rounding and cannot take NaN or infinity, so only a plain index goes to Swift.

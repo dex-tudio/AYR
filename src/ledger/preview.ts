@@ -1,5 +1,5 @@
-import type { AppSnapshot, LedgerService, MutationResult, SettingsRequest } from './contracts.ts';
-import { positiveMoney } from './contracts.ts';
+import type { AppSnapshot, Band, LedgerService, MonthDayState, MonthViewState, MutationResult, SettingsRequest } from './contracts.ts';
+import { daysInMonth, invalidMonthMessage, positiveMoney, validMonthOffset } from './contracts.ts';
 
 const maximumMoney = '25200470046051300';
 // Same texts as Core LedgerError.errorDescription; a test compares them with the Swift source.
@@ -37,7 +37,59 @@ const sourceInfos = [
 
 export type PreviewScenario = 'default' | 'firstStart' | 'empty' | 'readFailure' | 'maximum' | 'readFailureOnce'
   | 'carried' | 'saveFailureOnce' | 'dayChange' | 'listChange'
-  | 'firstStartSaveFailureOnce' | 'corrupt' | 'corruptResetFailureOnce' | 'mixedSources';
+  | 'firstStartSaveFailureOnce' | 'corrupt' | 'corruptResetFailureOnce' | 'mixedSources' | 'monthReadFailureOnce' | 'laterReadFailureOnce';
+
+// Same texts as Core `phrase`; a test compares them with the Swift source.
+export const phrases: Record<Band, string> = { calm: '아직은 여유 있네', caution: '오늘 좀 쓰는데?', exceeded: '님 부자임?' };
+const bandOf = (total: bigint, budget: bigint): Band => total < budget / 2n + budget % 2n ? 'calm' : total < budget ? 'caution' : 'exceeded';
+
+// Calendar arithmetic on yyyy-MM-dd text. Date.UTC only counts days in a month; no local time or ISO cutting is involved.
+const pad = (value: number, size = 2) => String(value).padStart(size, '0');
+const daysIn = daysInMonth;
+function shiftMonth(month: string, by: number) {
+  const index = Number(month.slice(0, 4)) * 12 + Number(month.slice(5, 7)) - 1 + by;
+  return `${pad(Math.floor(index / 12), 4)}-${pad((index % 12) + 1)}`;
+}
+
+export type DayRecord = { total: bigint; budget: bigint };
+/** The month as Core `summary` reports it, computed with BigInt for the fake ledger only. It is never used on the native path. */
+export function summarizeMonth(input: { offset: number; month: string; today: string; records: Record<string, DayRecord>; budget: bigint }): MonthViewState {
+  const { offset, month, today, records, budget } = input;
+  const count = daysIn(month);
+  const days: MonthDayState[] = Array.from({ length: count }, (_, index) => {
+    const key = `${month}-${pad(index + 1)}`;
+    const record = key <= today ? records[key] : undefined;
+    if (!record) return { key, day: index + 1, status: key > today ? 'future' : 'noRecord', total: null, budget: null, phrase: null, band: null };
+    const band = bandOf(record.total, record.budget);
+    return { key, day: index + 1, status: 'recorded', total: String(record.total), budget: String(record.budget), phrase: phrases[band], band };
+  });
+  const total = days.reduce((sum, day) => sum + BigInt(day.total ?? '0'), 0n);
+  // The compared span is today's date for the current month and the whole month otherwise, capped by the previous month's length.
+  const span = today.startsWith(`${month}-`) ? Number(today.slice(8)) : count;
+  const previous = shiftMonth(month, -1);
+  const previousDays = Array.from({ length: Math.min(span, daysIn(previous)) }, (_, index) => records[`${previous}-${pad(index + 1)}`]);
+  const covered = days.slice(0, span).every(day => day.status === 'recorded') && previousDays.every(record => record !== undefined);
+  const difference = covered ? total - previousDays.reduce((sum, record) => sum + record!.total, 0n) : null;
+  const remaining = budget - total;
+  return {
+    offset, monthKey: month, title: `${Number(month.slice(0, 4))}년 ${Number(month.slice(5, 7))}월`,
+    canGoPrevious: offset > -11, canGoNext: offset < 0,
+    weekdays: ['일', '월', '화', '수', '목', '금', '토'], leadingBlanks: new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1, 1)).getUTCDay(),
+    days, total: String(total), budget: String(budget), remaining: String(remaining < 0n ? -remaining : remaining), overBudget: remaining < 0n,
+    comparison: difference === null ? null : { difference: String(difference < 0n ? -difference : difference), direction: difference > 0n ? 'more' : difference < 0n ? 'less' : 'same' },
+    phraseCounts: (['calm', 'caution', 'exceeded'] as Band[]).map(band => ({ band, phrase: phrases[band], days: days.filter(day => day.band === band).length })),
+  };
+}
+// Past days of the fake ledger: 2026-11-01..10 (add up with today's 32,400 to the 286,400 month), all of October, and the second half of September.
+function seedRecords(): Record<string, DayRecord> {
+  const budget = 50000n;
+  const records: Record<string, DayRecord> = {};
+  [12000, 0, 31000, 48000, 50000, 25000, 24000, 18000, 21000, 25000].forEach((total, index) => { records[`2026-11-${pad(index + 1)}`] = { total: BigInt(total), budget }; });
+  const fake = (day: number) => BigInt(((day * 37) % 55) * 1000);
+  for (let day = 1; day <= 31; day++) records[`2026-10-${pad(day)}`] = { total: fake(day), budget };
+  for (let day = 16; day <= 30; day++) records[`2026-09-${pad(day)}`] = { total: fake(day), budget };
+  return records;
+}
 
 // Session-memory fake ledger. Rules mirror Core with BigInt; it is never used on the native path.
 export class PreviewLedger implements LedgerService {
@@ -56,6 +108,10 @@ export class PreviewLedger implements LedgerService {
   private dailyBudget = 50000n;
   private monthlyBudget: bigint | null = 1500000n;
   private sources = ['kbCheckSMS'];
+  // Finished days (today is added when read) and the monthly budget each month was given; past months keep theirs.
+  private records: Record<string, DayRecord> = {};
+  private monthBudgets: Record<string, bigint> = {};
+  private monthFailed = false;
   private lastAttempt: { date: string; status: string; message: string } | null = null;
   private lastReception: string | null = null;
   constructor(scenario: PreviewScenario = 'default') {
@@ -67,6 +123,13 @@ export class PreviewLedger implements LedgerService {
     this.approvals = scenario === 'empty' ? [] : scenario === 'maximum' ? [BigInt(maximumMoney)]
       : scenario === 'carried' ? [3000n] : [5100n, 8700n, 18600n];
     if (scenario === 'carried') this.carried = 12000n;
+    if (this.onboarded) {
+      this.monthBudgets[fakeToday.slice(0, 7)] = 1500000n;
+      if (scenario !== 'empty' && scenario !== 'maximum') {
+        this.records = seedRecords();
+        this.monthBudgets['2026-10'] = 1500000n; this.monthBudgets['2026-09'] = 1500000n;
+      }
+    }
   }
   /** Preview-only hook: the device clock passes midnight. */
   advanceDay() { this.today = fakeNextDay; }
@@ -77,6 +140,7 @@ export class PreviewLedger implements LedgerService {
 
   private refresh() {
     if (this.day === this.today) return;
+    if (this.onboarded) this.records[this.day] = { total: this.total, budget: this.dailyBudget };
     this.day = this.today; this.approvals = []; this.carried = 0n;
   }
   private get total() { return this.approvals.reduce((sum, amount) => sum + amount, this.carried); }
@@ -92,7 +156,7 @@ export class PreviewLedger implements LedgerService {
   private build(error: string | null, unreadable = false, canReset = false): AppSnapshot {
     const total = this.total;
     const budget = this.dailyBudget;
-    const band = total < (budget + 1n) / 2n ? 'calm' : total < budget ? 'caution' : 'exceeded';
+    const band = bandOf(total, budget);
     return {
       ledger: unreadable ? null : {
         onboardingCompleted: this.onboarded,
@@ -100,7 +164,7 @@ export class PreviewLedger implements LedgerService {
           approvals: this.approvals.map(String), expectedCurrent: this.token() },
         settings: { identity: this.identity, dailyBudget: budget.toString(), monthlyBudget: this.monthlyBudget?.toString() ?? null, sources: [...this.sources] },
         lastReception: this.lastReception, lastAttempt: this.lastAttempt,
-        phrase: { calm: '아직은 여유 있네', caution: '오늘 좀 쓰는데?', exceeded: '님 부자임?' }[band], band,
+        phrase: phrases[band], band,
       },
       error: error ? { message: error, canReset } : null,
       activityNotice: null, activityEnabled: false, resettingRecords: false,
@@ -125,8 +189,23 @@ export class PreviewLedger implements LedgerService {
     this.refresh();
     if (this.corrupted) return this.build(storeMessages.unreadable, true, true);
     // readFailureOnce: the first read fails, a retry succeeds.
-    const failing = this.scenario === 'readFailure' || (this.scenario === 'readFailureOnce' && this.reads++ === 0);
+    // laterReadFailureOnce: the third read fails (Today, then Settings, then the screen opened from Settings), so a screen reached by navigation can show a failed read.
+    const failAt = this.scenario === 'readFailureOnce' ? 0 : this.scenario === 'laterReadFailureOnce' ? 2 : -1;
+    const failing = this.scenario === 'readFailure' || (failAt >= 0 && this.reads++ === failAt);
     return this.build(failing ? '기록을 불러오지 못했어요. 다시 시도해주세요.' : null, failing);
+  }
+  async getMonth(offset: number): Promise<MonthViewState> {
+    if (!validMonthOffset(offset)) throw new RangeError(invalidMonthMessage);
+    this.refresh();
+    if (this.corrupted) throw new Error(storeMessages.unreadable);
+    // monthReadFailureOnce: the first month read fails while the rest of the ledger reads fine; a retry succeeds.
+    const failOnce = this.scenario === 'monthReadFailureOnce' && !this.monthFailed;
+    if (failOnce) this.monthFailed = true;
+    if (this.scenario === 'readFailure' || failOnce) throw new Error('기록을 불러오지 못했어요. 다시 시도해주세요.');
+    const month = shiftMonth(this.day.slice(0, 7), offset);
+    const records = this.onboarded ? { ...this.records, [this.day]: { total: this.total, budget: this.dailyBudget } } : this.records;
+    const budget = this.monthBudgets[month] ?? this.monthlyBudget ?? this.dailyBudget * BigInt(daysIn(month));
+    return summarizeMonth({ offset, month, today: this.day, records, budget });
   }
   async addSpending(amount: string, expectedDay: string): Promise<MutationResult> {
     this.interfere(); this.refresh();
@@ -171,6 +250,8 @@ export class PreviewLedger implements LedgerService {
     this.monthlyBudget = monthly === null ? null : BigInt(monthly);
     this.sources = [...request.sources];
     if (request.finishOnboarding) this.onboarded = true;
+    // Only this month is re-budgeted; months that already have a budget keep theirs.
+    if (this.onboarded) { const month = this.day.slice(0, 7); this.monthBudgets[month] = this.monthlyBudget ?? this.dailyBudget * BigInt(daysIn(month)); }
     return this.done();
   }
   async resetRecords(): Promise<MutationResult> {
@@ -182,6 +263,7 @@ export class PreviewLedger implements LedgerService {
     }
     this.corrupted = false; this.onboarded = false; this.identity = 'student'; this.dailyBudget = 20000n; this.monthlyBudget = null;
     this.sources = ['kbCheckSMS']; this.approvals = []; this.carried = 0n; this.lastAttempt = null; this.lastReception = null;
+    this.records = {}; this.monthBudgets = {};
     return this.done();
   }
 }

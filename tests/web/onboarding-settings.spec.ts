@@ -272,3 +272,15 @@ test('a saved list that holds an unsupported source can still be edited and save
   await expect(page.getByRole('heading', { name: '설정', exact: true })).toBeVisible();
   await expect(page.getByText('학생', { exact: true })).toBeVisible();
 });
+
+test('a screen with a failed read shows the error with a retry and then its content', async ({ page }) => {
+  // The pages are static files, so the connection screen is reached through the app: Today, Settings, then its link.
+  await page.goto('/?scenario=laterReadFailureOnce');
+  await page.getByRole('tab', { name: '설정' }).click();
+  await page.getByRole('link', { name: '결제 문자 연결하기' }).click();
+  await expect(page.getByRole('heading', { name: '결제 문자 연결' })).toBeVisible();
+  await expect(page.getByRole('alert')).toContainText('기록을 불러오지 못했어요');
+  await page.getByRole('button', { name: '다시 불러오기' }).click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(page.getByRole('link', { name: '연결 확인하기' })).toBeVisible();
+});

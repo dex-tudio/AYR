@@ -3,7 +3,6 @@ import { useLedger } from '../../src/state/LedgerProvider';
 import { useTheme } from '../../src/theme';
 
 // Tabs exist only after onboarding; a ledger that has not finished it goes to the onboarding flow.
-// The monthly tab is added with the monthly screen.
 export default function TabsLayout() {
   const theme = useTheme();
   const { snapshot } = useLedger();
@@ -13,6 +12,7 @@ export default function TabsLayout() {
     tabBarStyle: { backgroundColor: theme.surface, borderTopColor: theme.line }, tabBarLabelStyle: { fontSize: 14 }, tabBarIcon: () => null,
   }}>
     <Tabs.Screen name="index" options={{ title: '오늘' }} />
+    <Tabs.Screen name="monthly" options={{ title: '월별' }} />
     <Tabs.Screen name="settings" options={{ title: '설정' }} />
   </Tabs>;
 }

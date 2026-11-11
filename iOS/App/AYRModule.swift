@@ -10,6 +10,9 @@ final class AYRModule: Module {
         AsyncFunction("getSnapshot") { () async throws -> [String: Any] in
             try await self.getSnapshot()
         }
+        AsyncFunction("getMonth") { (offset: Int) async throws -> [String: Any] in
+            try await self.getMonth(offset)
+        }
         AsyncFunction("addSpending") { (amount: String, expectedDay: String) async throws -> [String: Any] in
             try await self.addSpending(amount, expectedDay: expectedDay)
         }
@@ -36,6 +39,20 @@ final class AYRModule: Module {
         let model = appModel()
         model.reload()
         return try snapshot(of: model)
+    }
+
+    /// 현재 월 + offset의 월 집계. 읽을 수 없는 기록은 빈 달이 아니라 오류로 거절한다.
+    @MainActor
+    private func getMonth(_ offset: Int) throws -> [String: Any] {
+        guard LedgerBridgeState.monthOffsets.contains(offset) else {
+            throw Exception(name: "ERR_AYR_MONTH_OFFSET", description: LedgerBridgeState.invalidMonth)
+        }
+        let model = appModel()
+        model.reload()
+        guard let ledger = model.ledger, let month = LedgerBridgeState.month(ledger: ledger, offset: offset) else {
+            throw Exception(name: "ERR_AYR_LEDGER_UNAVAILABLE", description: model.error ?? "기록을 불러오지 못했어요.")
+        }
+        return month
     }
 
     /// 현재 모델 상태를 그대로 담는다. 저장 실패 직후에는 다시 읽지 않아 실패 안내가 사라지지 않는다.

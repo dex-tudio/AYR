@@ -115,4 +115,82 @@ try history.updateSettings(basic.settings, monthlyBudget: basic.monthlyBudget, n
 check(history.settings.identity == .student && history.currentBudget == 20_000)
 let pastKey = dayKey(for: dayOne, calendar: spendingCalendar())
 check(history.records[pastKey]?.budget == 50_000 && history.records[pastKey]?.total == 5_000)
-print("Bridge checks: exact money, invalid inputs, bands, removal input boundary, settings input boundary, missing ledger, metadata passed")
+// getMonth: 월 집계와 문구·상태는 Core summary 결과를 그대로 옮긴다
+func at(_ day: String) -> Date { ISO8601DateFormatter().date(from: day + "T12:00:00Z")! }
+func monthLedger(start: String, budget: Int = 50_000, monthly: Int? = 1_500_000) throws -> SpendingLedger {
+    var result = SpendingLedger(now: at(start))
+    try result.updateSettings(AppSettings(identity: .worker, dailyBudget: budget)!, monthlyBudget: monthly, now: at(start))
+    result.completeOnboarding(now: at(start))
+    return result
+}
+func spend(_ target: inout SpendingLedger, _ day: String, _ amount: Int) throws {
+    try target.addSpending(amount, expectedDay: day, now: at(day))
+}
+func monthDays(_ month: [String: Any]) -> [[String: Any]] { month["days"] as! [[String: Any]] }
+var feb = try monthLedger(start: "2026-02-01")
+for day in 1...28 { try spend(&feb, String(format: "2026-02-%02d", day), 1_000) }
+for day in 1...31 { try spend(&feb, String(format: "2026-03-%02d", day), 2_000) }
+let marchNow = at("2026-03-31")
+let march = LedgerBridgeState.month(ledger: feb, offset: 0, now: marchNow)!
+check(march["title"] as? String == "2026년 3월" && march["monthKey"] as? String == "2026-03" && march["offset"] as? Int == 0)
+check(monthDays(march).count == 31)
+check(march["total"] as? String == "62000" && march["budget"] as? String == "1500000" && march["remaining"] as? String == "1438000")
+check(march["overBudget"] as? Bool == false)
+check(monthDays(march).reduce(0) { $0 + Int($1["total"] as! String)! } == 62_000)
+// 3월 31일 대 2월 28일: 더 짧은 쪽(28일) 전월과 같은 기간 비교
+let shortComparison = march["comparison"] as! [String: Any]
+check(shortComparison["difference"] as? String == "34000" && shortComparison["direction"] as? String == "more")
+check(march["canGoPrevious"] as? Bool == true && march["canGoNext"] as? Bool == false)
+check((march["weekdays"] as! [String]).count == 7 && (0...6).contains(march["leadingBlanks"] as! Int))
+let lastDay = monthDays(march)[30]
+check(lastDay["key"] as? String == "2026-03-31" && lastDay["day"] as? Int == 31 && lastDay["status"] as? String == "recorded")
+check(lastDay["total"] as? String == String(feb.current.total) && lastDay["budget"] as? String == "50000" && lastDay["band"] as? String == "calm")
+check(lastDay["phrase"] as? String == phrase(total: 2_000, budget: 50_000))
+let previous = LedgerBridgeState.month(ledger: feb, offset: -1, now: marchNow)!
+check(previous["title"] as? String == "2026년 2월" && previous["canGoNext"] as? Bool == true && monthDays(previous).count == 28)
+// 전월 기록에 비어 있는 날이 있으면 0이 아니라 비교 근거 없음
+check(previous["comparison"] is NSNull)
+var fresh = try monthLedger(start: "2026-03-01")
+try spend(&fresh, "2026-03-04", 1_000)
+check(LedgerBridgeState.month(ledger: fresh, offset: 0, now: at("2026-03-04"))!["comparison"] is NSNull)
+// -11...0만 받는다
+for bad in [-12, 1, Int.min, Int.max] { check(LedgerBridgeState.month(ledger: feb, offset: bad, now: marchNow) == nil) }
+let oldest = LedgerBridgeState.month(ledger: feb, offset: -11, now: marchNow)!
+check(oldest["title"] as? String == "2025년 4월" && oldest["canGoPrevious"] as? Bool == false)
+// 기록 없음 / 0원 / 아직 오지 않은 날을 구분한다
+var late = try monthLedger(start: "2026-03-05")
+let lateMonth = LedgerBridgeState.month(ledger: late, offset: 0, now: at("2026-03-10"))!
+let statuses = monthDays(lateMonth).map { $0["status"] as! String }
+check(statuses[0..<4].allSatisfy { $0 == "noRecord" } && statuses[4..<10].allSatisfy { $0 == "recorded" } && statuses[10...].allSatisfy { $0 == "future" })
+check(monthDays(lateMonth)[4]["total"] as? String == "0" && monthDays(lateMonth)[0]["total"] is NSNull && monthDays(lateMonth)[10]["total"] is NSNull)
+check(monthDays(lateMonth)[0]["phrase"] is NSNull && monthDays(lateMonth)[0]["band"] is NSNull)
+check(lateMonth["total"] as? String == "0")
+// 50%/100% 경계와 문구별 일수
+var edges = try monthLedger(start: "2026-03-01")
+for (index, amount) in [24_999, 25_000, 49_999, 50_000].enumerated() { try spend(&edges, String(format: "2026-03-%02d", index + 1), amount) }
+let edgeMonth = LedgerBridgeState.month(ledger: edges, offset: 0, now: at("2026-03-04"))!
+let counts = (edgeMonth["phraseCounts"] as! [[String: Any]]).map { [$0["band"] as! String, $0["phrase"] as! String, String($0["days"] as! Int)] }
+check(counts == [["calm", "아직은 여유 있네", "1"], ["caution", "오늘 좀 쓰는데?", "2"], ["exceeded", "님 부자임?", "1"]])
+check(monthDays(edgeMonth).prefix(4).map { $0["band"] as! String } == ["calm", "caution", "caution", "exceeded"])
+// 월 예산을 넘으면 초과분을 보여준다
+var tight = try monthLedger(start: "2026-03-01", monthly: 10_000)
+try spend(&tight, "2026-03-02", 30_000)
+let tightMonth = LedgerBridgeState.month(ledger: tight, offset: 0, now: at("2026-03-02"))!
+check(tightMonth["remaining"] as? String == "20000" && tightMonth["overBudget"] as? Bool == true)
+// 월 예산을 바꾸면 이번 달만 바뀌고 지난달 예산은 유지된다
+try feb.updateSettings(AppSettings(identity: .worker, dailyBudget: 50_000)!, monthlyBudget: 2_000_000, now: marchNow)
+check(LedgerBridgeState.month(ledger: feb, offset: 0, now: marchNow)!["budget"] as? String == "2000000")
+check(LedgerBridgeState.month(ledger: feb, offset: -1, now: marchNow)!["budget"] as? String == "1500000")
+// 추가/삭제 뒤 오늘과 월 합계가 함께 바뀐다
+try spend(&feb, "2026-03-31", 5_100)
+let added = LedgerBridgeState.month(ledger: feb, offset: 0, now: marchNow)!
+check(added["total"] as? String == "67100" && monthDays(added)[30]["total"] as? String == String(feb.current.total))
+try feb.removeSpending(at: feb.current.approvals.count - 1, expected: feb.current, now: marchNow)
+check(LedgerBridgeState.month(ledger: feb, offset: 0, now: marchNow)!["total"] as? String == "62000")
+// 정확한 큰 금액: JS 안전 정수 범위를 넘어도 문자열로 나간다
+var huge = try monthLedger(start: "2026-03-01", budget: maximumMoney, monthly: maximumMoney)
+try spend(&huge, "2026-03-01", maximumMoney)
+let hugeMonth = LedgerBridgeState.month(ledger: huge, offset: 0, now: at("2026-03-01"))!
+check(hugeMonth["total"] as? String == String(maximumMoney) && monthDays(hugeMonth)[0]["total"] as? String == String(maximumMoney))
+check(JSONSerialization.isValidJSONObject(hugeMonth) && JSONSerialization.isValidJSONObject(march))
+print("Bridge checks: exact money, invalid inputs, bands, removal input boundary, settings input boundary, month summary, missing ledger, metadata passed")

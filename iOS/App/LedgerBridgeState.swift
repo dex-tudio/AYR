@@ -46,6 +46,53 @@ enum LedgerBridgeState {
         return .success(SettingsInput(settings: settings, monthlyBudget: monthly, finishOnboarding: finish))
     }
 
+    static let invalidMonth = "볼 수 있는 달이 아니에요. 이번 달부터 11개월 전까지만 볼 수 있어요."
+    /// 현재 월 시작 기준 이동 가능한 범위. 최근 12개월 보관 정책과 같다.
+    static let monthOffsets = -11...0
+
+    /// 현재 월 + offset의 월 집계. 합계·예산·비교·날짜별 문구와 구간은 Core `summary` 결과를 그대로 옮기고,
+    /// 금액은 모두 10진 문자열이다. 기록 없음(noRecord)·0원(recorded)·아직 오지 않은 날(future)을 구분한다.
+    /// offset이 범위 밖이면 nil.
+    static func month(ledger: SpendingLedger, offset: Int, now: Date = Date(), calendar: Calendar = spendingCalendar()) -> [String: Any]? {
+        guard monthOffsets.contains(offset) else { return nil }
+        let calendar = spendingCalendar(timeZone: calendar.timeZone)
+        let thisMonth = calendar.dateInterval(of: .month, for: now)!.start
+        let start = calendar.date(byAdding: .month, value: offset, to: thisMonth)!
+        let summary = ledger.summary(for: start, now: now, calendar: calendar)
+        let today = dayKey(for: now, calendar: calendar)
+        let parts = calendar.dateComponents([.year, .month], from: start)
+        let days = summary.days.map { day -> [String: Any] in
+            let status = day.total != nil ? "recorded" : day.key > today ? "future" : "noRecord"
+            var value: [String: Any] = ["key": day.key, "day": calendar.component(.day, from: day.date), "status": status,
+                                        "total": day.total.map { String($0) } as Any? ?? NSNull(),
+                                        "budget": day.budget.map { String($0) } as Any? ?? NSNull(),
+                                        "phrase": NSNull(), "band": NSNull()]
+            if let total = day.total, let budget = day.budget {
+                value["phrase"] = phrase(total: total, budget: budget)
+                value["band"] = band(total: total, budget: budget)
+            }
+            return value
+        }
+        let comparison: Any = summary.comparison.map { difference in
+            ["difference": String(abs(difference)), "direction": difference > 0 ? "more" : difference < 0 ? "less" : "same"] as [String: Any]
+        } ?? NSNull()
+        // 세 구간의 문구는 임계값을 복제하지 않고 Core `phrase`에서 얻는다.
+        let bands = [("calm", phrase(total: 0, budget: 1)), ("caution", phrase(total: 1, budget: 2)), ("exceeded", phrase(total: 1, budget: 1))]
+        let weekdaySymbols = calendar.veryShortStandaloneWeekdaySymbols
+        let first = calendar.firstWeekday - 1
+        return [
+            "offset": offset, "monthKey": String(format: "%04d-%02d", parts.year!, parts.month!), "title": "\(parts.year!)년 \(parts.month!)월",
+            "canGoPrevious": offset > monthOffsets.lowerBound, "canGoNext": offset < monthOffsets.upperBound,
+            "weekdays": (0..<7).map { weekdaySymbols[(first + $0) % 7] },
+            "leadingBlanks": (calendar.component(.weekday, from: start) - calendar.firstWeekday + 7) % 7,
+            "days": days,
+            "total": String(summary.total), "budget": String(summary.budget),
+            "remaining": String(abs(summary.remaining)), "overBudget": summary.remaining < 0,
+            "comparison": comparison,
+            "phraseCounts": bands.map { ["band": $0.0, "phrase": $0.1, "days": summary.phraseCounts[$0.1, default: 0]] as [String: Any] }
+        ]
+    }
+
     /// 구간 경계는 Core `phrase`가 정한다. 같은 기준에서 합계 0과 기준 금액이 받는 문구로 비교해 임계값을 복제하지 않는다.
     static func band(total: Int, budget: Int) -> String {
         let current = phrase(total: total, budget: budget)

@@ -16,13 +16,15 @@ export function useClose(fallback: '/spending' | '/' | '/settings') {
 export function ScreenFrame({ title, onBack, children }: { title: string; onBack?: () => void; children: ReactNode }) {
   const theme = useTheme();
   const { store, snapshot, readError } = useLedger();
+  // A read that failed inside the ledger (no ledger, an error) is as much a read failure as a thrown one.
+  const message = readError ?? snapshot?.error?.message;
   return <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
     <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
       {onBack && <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={onBack} style={styles.back}>
         <Text style={{ color: theme.ink, fontSize: 16 }}>‹ 뒤로</Text>
       </Pressable>}
       <Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>{title}</Text>
-      {readError ? <Alert message={readError} onRetry={() => void store.reload()} /> : !snapshot && <Body>기록을 불러오고 있어요.</Body>}
+      {message ? <Alert message={message} onRetry={() => void store.reload()} /> : !snapshot && <Body>기록을 불러오고 있어요.</Body>}
       {children}
     </ScrollView>
   </SafeAreaView>;
