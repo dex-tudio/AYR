@@ -11,6 +11,18 @@ test('preview returns fake exact money and metadata without native access', asyn
   assert.equal(state.ledger?.settings.identity, 'worker');
   assert.equal(typeof state.metadata.maximumMoney, 'string');
 });
+test('reception failure shows an ignored call without adding to the total', async () => {
+  const state = await new PreviewLedger('receptionFailure').getSnapshot();
+  assert.equal(state.ledger?.lastAttempt?.status, 'ignored');
+  assert.equal(state.ledger?.lastAttempt?.message, '지원하는 결제 문자가 아니어서 지출에 더하지 않았어요.');
+  assert.equal(state.ledger?.current.total, '32400');
+});
+test('the preview tools exist only behind the web boundary', () => {
+  const read = (path: string) => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
+  assert.doesNotMatch(read('src/preview/PreviewTools.ios.tsx'), /service\.web|preview\.ts|ledger\/preview/);
+  assert.doesNotMatch(read('app/_layout.tsx'), /service\.web|ledger\/preview/);
+  assert.doesNotMatch(read('src/components/LockScreenPreview.tsx'), /service\.web|ledger\/preview|PreviewTools/);
+});
 test('read failure does not turn into a successful zero', async () => {
   const service = new PreviewLedger('readFailure');
   const state = await service.getSnapshot();

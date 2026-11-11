@@ -23,6 +23,7 @@ const saveFailure = '저장하지 못했어요. 잠시 뒤 다시 시도해주�
 const fakeToday = '2026-11-11';
 const fakeNextDay = '2026-11-12';
 const fakeInstant = '2026-11-11T03:00:00.000Z';
+const ignoredReception = '지원하는 결제 문자가 아니어서 지출에 더하지 않았어요.';
 const testReception = '확인용 문자가 도착했어요. 지출에는 더하지 않았어요.';
 
 const identities = [
@@ -37,7 +38,7 @@ const sourceInfos = [
 
 export type PreviewScenario = 'default' | 'firstStart' | 'empty' | 'readFailure' | 'maximum' | 'readFailureOnce'
   | 'carried' | 'saveFailureOnce' | 'dayChange' | 'listChange'
-  | 'firstStartSaveFailureOnce' | 'corrupt' | 'corruptResetFailureOnce' | 'mixedSources' | 'monthReadFailureOnce';
+  | 'firstStartSaveFailureOnce' | 'corrupt' | 'corruptResetFailureOnce' | 'mixedSources' | 'monthReadFailureOnce' | 'receptionFailure';
 
 // Same texts as Core `phrase`; a test compares them with the Swift source.
 export const phrases: Record<Band, string> = { calm: '아직은 여유 있네', caution: '오늘 좀 쓰는데?', exceeded: '님 부자임?' };
@@ -123,6 +124,8 @@ export class PreviewLedger implements LedgerService {
     this.approvals = scenario === 'empty' ? [] : scenario === 'maximum' ? [BigInt(maximumMoney)]
       : scenario === 'carried' ? [3000n] : [5100n, 8700n, 18600n];
     if (scenario === 'carried') this.carried = 12000n;
+    // The shortcut called the app with a text that is not a supported payment: shown as the last call, never added.
+    if (scenario === 'receptionFailure') { this.lastAttempt = { date: fakeInstant, status: 'ignored', message: ignoredReception }; this.lastReception = fakeInstant; }
     if (this.onboarded) {
       this.monthBudgets[fakeToday.slice(0, 7)] = 1500000n;
       if (scenario !== 'empty' && scenario !== 'maximum') {

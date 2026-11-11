@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supportedTitles } from '../../src/ledger/contracts';
 import { ReceptionStatus } from '../../src/components/ReceptionStatus';
@@ -16,10 +16,6 @@ export default function Today() {
   const ready = snapshot?.ledger?.onboardingCompleted === true;
   return <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
     <ScrollView contentContainerStyle={styles.page} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void store.reload()} />}>
-      {Platform.OS === 'web' && <View style={[styles.preview, { backgroundColor: theme.lime }]}>
-        <Text style={{ color: theme.limeInk, fontSize: 14, fontWeight: '700' }}>미리보기 · 가짜 기록</Text>
-        <Text style={{ color: theme.limeInk, fontSize: 12 }}>실제 장부와 연결되지 않아요. 잠금화면 표시는 iPhone에서 가능해요.</Text>
-      </View>}
       <Text style={[styles.title, { color: theme.ink }]}>오늘</Text>
       {!snapshot && !readError && <View accessibilityRole="progressbar"><ActivityIndicator color={theme.ink} /><Text style={{ color: theme.secondary }}>기록을 불러오고 있어요.</Text></View>}
       {message && <View accessibilityRole="alert" style={[styles.notice, { backgroundColor: theme.surface }]}>
@@ -44,6 +40,6 @@ export default function Today() {
 }
 const styles = StyleSheet.create({
   safe: { flex: 1 }, page: { width: '100%', maxWidth: 540, alignSelf: 'center', padding: 16, gap: 20 },
-  preview: { padding: 14, borderRadius: 14, gap: 6 }, title: { fontSize: 28, fontWeight: '800', marginTop: 12 },
+  title: { fontSize: 28, fontWeight: '800', marginTop: 12 },
   notice: { padding: 20, borderRadius: 20, gap: 12 }, button: { minHeight: 44, justifyContent: 'center', alignItems: 'flex-start' },
 });
