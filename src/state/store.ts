@@ -41,7 +41,8 @@ export class LedgerStore {
     this.set({ refreshing: true });
     try {
       const snapshot = assertSnapshotMoney(await this.service.getSnapshot());
-      if (request === this.latest) this.set({ snapshot, readError: null, refreshing: false });
+      // A healthy read means the record is no longer damaged, so a recovery failure from before must not keep the recovery screen up.
+      if (request === this.latest) this.set({ snapshot, readError: null, refreshing: false, failure: snapshot.error === null && this.state.failure?.canReset ? null : this.state.failure });
     } catch (cause) {
       if (request === this.latest) this.set({ readError: cause instanceof Error ? cause.message : readFailure, refreshing: false });
     }

@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { PreviewLedger, bridgeMessages, storeMessages } from '../ledger/preview.ts';
 import type { PreviewScenario } from '../ledger/preview.ts';
 import type { AppSnapshot, SettingsRequest } from '../ledger/contracts.ts';
-import { assertSnapshotMoney, describeReception, identityDefault, settingsRequest } from '../ledger/contracts.ts';
+import { assertSnapshotMoney, describeReception, draftFromSettings, identityDefault, settingsRequest, supportedTitles } from '../ledger/contracts.ts';
 import { LedgerStore } from '../state/store.ts';
 import { runSystemAction } from '../state/actions.ts';
 import { watchActive } from '../state/polling.ts';
@@ -253,4 +253,48 @@ test('preview texts match the Swift sources and the bridge routes settings and r
   const native = readFileSync('src/ledger/service.ios.ts', 'utf8');
   assert.match(native, /saveSettings/);
   assert.match(native, /resetRecords/);
+});
+
+test('stored sources that are not supported are dropped from the draft so the form can still be saved', async () => {
+  const { metadata, ledger } = await (async () => { const state = await new PreviewLedger('mixedSources').getSnapshot(); return { metadata: state.metadata, ledger: state.ledger! }; })();
+  assert.deepEqual(ledger.settings.sources, ['kbCheckSMS', 'tossNotification']);
+  const draft = draftFromSettings(ledger.settings, metadata);
+  assert.deepEqual(draft.sources, ['kbCheckSMS']);
+  assert.notEqual(settingsRequest(draft, metadata, false), null, 'the filtered draft can be saved');
+  assert.equal(settingsRequest({ ...draft, sources: ledger.settings.sources }, metadata, false), null, 'the raw stored list could not');
+  // Nothing supported is stored: start from the supported sources instead of a form that can never be saved.
+  const none = draftFromSettings({ ...ledger.settings, sources: ['tossNotification'] }, metadata);
+  assert.deepEqual(none.sources, ['kbCheckSMS']);
+  assert.equal(none.customMonthly, true);
+  assert.equal(none.monthlyBudget, '1500000');
+});
+
+test('supported source titles come from metadata', async () => {
+  const { metadata } = await new PreviewLedger().getSnapshot();
+  assert.equal(supportedTitles(metadata), 'KB국민 체크카드 · 문자');
+});
+
+test('a healthy read ends a recovery failure, so the damaged screen does not outlive the damage', async () => {
+  const damaged = new PreviewLedger('corruptResetFailureOnce');
+  const healthy = new PreviewLedger();
+  let mode: 'damaged' | 'healthy' = 'damaged';
+  const store = new LedgerStore({
+    getSnapshot: () => (mode === 'damaged' ? damaged : healthy).getSnapshot(),
+    addSpending: (a, d) => healthy.addSpending(a, d), removeSpending: (i, e) => healthy.removeSpending(i, e),
+    saveSettings: r => healthy.saveSettings(r), resetRecords: () => damaged.resetRecords(),
+  });
+  await store.reload();
+  assert.equal(await store.resetRecords(), false);
+  assert.equal(store.getState().failure?.canReset, true);
+  await store.reload();
+  assert.equal(store.getState().failure?.canReset, true, 'still damaged on the next read');
+  mode = 'healthy';
+  await store.reload();
+  assert.equal(store.getState().failure, null);
+  assert.equal(store.getState().snapshot?.error, null);
+});
+
+test('settings sources are read defensively in Swift and supported sources come from metadata in the preview', () => {
+  assert.match(readFileSync('iOS/App/LedgerBridgeState.swift', 'utf8'), /request\["sources"\] as\? \[Any\]/);
+  assert.doesNotMatch(readFileSync('src/ledger/preview.ts', 'utf8'), /raw === 'kbCheckSMS'/);
 });

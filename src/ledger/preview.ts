@@ -25,9 +25,19 @@ const fakeNextDay = '2026-11-12';
 const fakeInstant = '2026-11-11T03:00:00.000Z';
 const testReception = '확인용 문자가 도착했어요. 지출에는 더하지 않았어요.';
 
+const identities = [
+  { raw: 'student', title: '학생', defaultBudget: '20000' },
+  { raw: 'jobSeeker', title: '취준생', defaultBudget: '30000' },
+  { raw: 'worker', title: '직장인', defaultBudget: '50000' },
+];
+const sourceInfos = [
+  { raw: 'kbCheckSMS', title: 'KB국민 체크카드 · 문자', isSupported: true, filterKeyword: 'KB국민체크', testText: 'KB국민체크 AYR테스트', instructions: '단축어에서 문자 자동화를 만들고 AYR 결제 처리에 본문을 전달해주세요.' },
+  { raw: 'tossNotification', title: '토스뱅크 체크카드·토스페이 · 토스 알림', isSupported: false, filterKeyword: null, testText: 'AYR테스트', instructions: '준비 중' },
+];
+
 export type PreviewScenario = 'default' | 'firstStart' | 'empty' | 'readFailure' | 'maximum' | 'readFailureOnce'
   | 'carried' | 'saveFailureOnce' | 'dayChange' | 'listChange'
-  | 'firstStartSaveFailureOnce' | 'corrupt' | 'corruptResetFailureOnce';
+  | 'firstStartSaveFailureOnce' | 'corrupt' | 'corruptResetFailureOnce' | 'mixedSources';
 
 // Session-memory fake ledger. Rules mirror Core with BigInt; it is never used on the native path.
 export class PreviewLedger implements LedgerService {
@@ -51,6 +61,8 @@ export class PreviewLedger implements LedgerService {
   constructor(scenario: PreviewScenario = 'default') {
     this.scenario = scenario;
     this.corrupted = scenario === 'corrupt' || scenario === 'corruptResetFailureOnce';
+    // SwiftUI let an unsupported source stay in the saved settings; this scenario starts from such a ledger.
+    if (scenario === 'mixedSources') this.sources = ['kbCheckSMS', 'tossNotification'];
     this.onboarded = scenario !== 'firstStart' && scenario !== 'firstStartSaveFailureOnce';
     this.approvals = scenario === 'empty' ? [] : scenario === 'maximum' ? [BigInt(maximumMoney)]
       : scenario === 'carried' ? [3000n] : [5100n, 8700n, 18600n];
@@ -94,15 +106,8 @@ export class PreviewLedger implements LedgerService {
       activityNotice: null, activityEnabled: false, resettingRecords: false,
       metadata: {
         maximumMoney,
-        identities: [
-          { raw: 'student', title: '학생', defaultBudget: '20000' },
-          { raw: 'jobSeeker', title: '취준생', defaultBudget: '30000' },
-          { raw: 'worker', title: '직장인', defaultBudget: '50000' },
-        ],
-        sources: [
-          { raw: 'kbCheckSMS', title: 'KB국민 체크카드 · 문자', isSupported: true, filterKeyword: 'KB국민체크', testText: 'KB국민체크 AYR테스트', instructions: '단축어에서 문자 자동화를 만들고 AYR 결제 처리에 본문을 전달해주세요.' },
-          { raw: 'tossNotification', title: '토스뱅크 체크카드·토스페이 · 토스 알림', isSupported: false, filterKeyword: null, testText: 'AYR테스트', instructions: '준비 중' },
-        ],
+        identities,
+        sources: sourceInfos,
       },
     };
   }
@@ -154,8 +159,8 @@ export class PreviewLedger implements LedgerService {
     this.refresh();
     if (this.corrupted) return this.fail(storeMessages.unreadable, true);
     if (this.scenario === 'readFailure') return this.fail(messages.invalidStoredData);
-    const known = ['student', 'jobSeeker', 'worker'].includes(request.identity);
-    const supported = request.sources.length > 0 && request.sources.every(raw => raw === 'kbCheckSMS');
+    const known = identities.some(item => item.raw === request.identity);
+    const supported = request.sources.length > 0 && request.sources.every(raw => sourceInfos.some(item => item.raw === raw && item.isSupported));
     if (!known || !supported) return this.fail(invalidSettings);
     const daily = positiveMoney(request.dailyBudget, maximumMoney);
     const monthly = request.monthlyBudget === null ? null : positiveMoney(request.monthlyBudget, maximumMoney);

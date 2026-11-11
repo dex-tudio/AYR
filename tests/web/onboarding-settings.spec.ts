@@ -259,3 +259,16 @@ test('a failed recovery keeps the damaged state and can be retried', async ({ pa
   await page.getByRole('button', { name: '원본 보관 후 새로 시작' }).click();
   await step(page, titles[0]);
 });
+
+test('a saved list that holds an unsupported source can still be edited and saved', async ({ page }) => {
+  await openSettings(page, 'mixedSources');
+  await page.getByRole('button', { name: '내 기준 바꾸기' }).click();
+  await expect(kb(page)).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: /토스뱅크/ })).not.toBeChecked();
+  const save = page.getByRole('button', { name: '저장', exact: true });
+  await expect(save).toBeEnabled();
+  await page.getByRole('radio', { name: '학생' }).click();
+  await save.click();
+  await expect(page.getByRole('heading', { name: '설정', exact: true })).toBeVisible();
+  await expect(page.getByText('학생', { exact: true })).toBeVisible();
+});

@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { supportedTitles } from '../../src/ledger/contracts';
 import { ReceptionStatus } from '../../src/components/ReceptionStatus';
 import { TodaySummary } from '../../src/components/TodaySummary';
 import { useActiveRefresh, useLedger } from '../../src/state/LedgerProvider';
@@ -32,7 +33,7 @@ export default function Today() {
       </Pressable>}
       {snapshot?.ledger && ready && <View style={[styles.notice, { backgroundColor: theme.surface }]}>
         <Text accessibilityRole="header" style={{ color: theme.ink, fontSize: 16, fontWeight: '700' }}>문자가 오면, 알아서</Text>
-        <Text style={{ color: theme.secondary, fontSize: 14, lineHeight: 22 }}>KB국민 체크카드 문자를 연결하면 오늘 쓴 돈에 자동으로 더해져요.</Text>
+        <Text style={{ color: theme.secondary, fontSize: 14, lineHeight: 22 }}>{supportedTitles(snapshot.metadata)}을(를) 연결하면 오늘 쓴 돈에 자동으로 더해져요.</Text>
         <ReceptionStatus ledger={snapshot.ledger} />
         <Pressable accessibilityRole="link" onPress={() => router.push('/connection')} style={styles.button}>
           <Text style={{ color: theme.ink, fontSize: 16, fontWeight: '700' }}>결제 문자 연결하기</Text>

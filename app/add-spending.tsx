@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ScreenFrame, useClose } from '../src/components/ScreenFrame';
 import { formatMoney, positiveMoney } from '../src/ledger/contracts';
 import { useActiveRefresh, useLedger } from '../src/state/LedgerProvider';
@@ -36,11 +36,6 @@ export default function AddSpending() {
     if (!next.readError && next.snapshot?.ledger) { setExpectedDay(next.snapshot.ledger.current.day); store.clearFailure(); }
   };
   return <ScreenFrame title="지출 추가" onBack={close}>
-    {!snapshot && !readError && <View accessibilityRole="progressbar"><ActivityIndicator color={theme.ink} /></View>}
-    {readError && <View accessibilityRole="alert" style={card}>
-      <Text style={{ color: theme.exceeded, fontSize: 16 }}>{readError}</Text>
-      <Pressable accessibilityRole="button" onPress={() => void store.reload()} style={styles.button}><Text style={{ color: theme.ink }}>다시 불러오기</Text></Pressable>
-    </View>}
     {ledger && !ledger.onboardingCompleted && <View style={card}>
       <Text style={{ color: theme.ink, fontSize: 18, fontWeight: '700' }}>시작 설정을 먼저 마쳐주세요</Text>
     </View>}

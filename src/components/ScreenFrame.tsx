@@ -2,7 +2,9 @@ import type { ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLedger } from '../state/LedgerProvider';
 import { useTheme } from '../theme';
+import { Alert, Body } from './ui';
 
 // Direct entry (browser reload) has no history, so fall back to the spending list.
 export function useClose(fallback: '/spending' | '/' | '/settings') {
@@ -10,14 +12,17 @@ export function useClose(fallback: '/spending' | '/' | '/settings') {
   return () => { if (router.canGoBack()) router.back(); else router.replace(fallback); };
 }
 
+// Screens share one read-failure alert with a retry button and one loading text, so none repeats them.
 export function ScreenFrame({ title, onBack, children }: { title: string; onBack?: () => void; children: ReactNode }) {
   const theme = useTheme();
+  const { store, snapshot, readError } = useLedger();
   return <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
     <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
       {onBack && <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={onBack} style={styles.back}>
         <Text style={{ color: theme.ink, fontSize: 16 }}>‹ 뒤로</Text>
       </Pressable>}
       <Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>{title}</Text>
+      {readError ? <Alert message={readError} onRetry={() => void store.reload()} /> : !snapshot && <Body>기록을 불러오고 있어요.</Body>}
       {children}
     </ScrollView>
   </SafeAreaView>;

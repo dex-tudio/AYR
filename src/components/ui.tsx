@@ -14,11 +14,12 @@ export function Body({ children, small, testID }: { children: ReactNode; small?:
   return <Text testID={testID} style={{ color: theme.secondary, fontSize: small ? 12 : 14, lineHeight: small ? 20 : 22 }}>{children}</Text>;
 }
 // A failure the user must see; role alert so a screen reader announces it.
-export function Alert({ title, message }: { title?: string; message: string }) {
+export function Alert({ title, message, onRetry }: { title?: string; message: string; onRetry?: () => void }) {
   const theme = useTheme();
   return <View accessibilityRole="alert" style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.line }]}>
     {title && <Text accessibilityRole="header" style={[styles.heading, { color: theme.exceeded }]}>{title}</Text>}
     <Text style={{ color: theme.exceeded, fontSize: 16 }}>{message}</Text>
+    {onRetry && <Button label="다시 불러오기" onPress={onRetry} />}
   </View>;
 }
 export function Button({ label, onPress, disabled, tone = 'plain', accessibilityLabel }: {

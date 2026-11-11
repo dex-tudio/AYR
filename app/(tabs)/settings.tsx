@@ -27,7 +27,7 @@ export default function Settings() {
   return <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
     <ScrollView contentContainerStyle={styles.page} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void store.reload()} />}>
       <Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>설정</Text>
-      {readError && <Alert message={readError} />}
+      {readError ? <Alert message={readError} onRetry={() => void store.reload()} /> : !snapshot && <Body>기록을 불러오고 있어요.</Body>}
       {ledger && <>
         <Card title="생활 기준">
           <Row label="신분" value={identity?.title ?? ledger.settings.identity} />

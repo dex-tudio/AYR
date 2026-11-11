@@ -97,6 +97,10 @@ check(rejection(["sources": []]) == .settings) // 빈 선택
 check(rejection(["sources": ["tossNotification"]]) == .settings) // 준비 중 수단
 check(rejection(["sources": ["kbCheckSMS", "tossNotification"]]) == .settings)
 check(rejection(["sources": ["nope"]]) == .settings && rejection(["sources": "kbCheckSMS"]) == .settings)
+check(rejection(["sources": ["kbCheckSMS", 3]]) == .settings && rejection(["sources": [NSNull()]]) == .settings)
+// 브릿지가 원소를 Optional로 감싸 넘겨도 문자열이면 받아들인다
+let wrapped: [Any] = [Optional("kbCheckSMS") as Any]
+check(accepted(["sources": wrapped])?.settings.sources == [.kbCheckSMS])
 check(rejection(["finishOnboarding": "yes"]) == .settings)
 check(SettingsRejection.settings.message == LedgerBridgeState.invalidSettings)
 check(SettingsRejection.amount.message == LedgerError.invalidAmount.errorDescription)

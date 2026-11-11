@@ -26,8 +26,11 @@ enum LedgerBridgeState {
     /// 지원하지 않거나 비어 있는 수단은 거부하고, 월 예산은 null이면 '하루 기준 × 일수'다.
     static func settings(_ request: [String: Any]) -> Result<SettingsInput, SettingsRejection> {
         guard let rawIdentity = request["identity"] as? String, let identity = Identity(rawValue: rawIdentity),
-              let rawSources = request["sources"] as? [String], !rawSources.isEmpty,
+              let items = request["sources"] as? [Any], !items.isEmpty,
               let finish = request["finishOnboarding"] as? Bool else { return .failure(.settings) }
+        // 원소를 하나씩 String으로 읽고, 하나라도 문자열이 아니면 거부한다(브릿지가 Optional로 감싼 원소도 방어).
+        let rawSources = items.compactMap { $0 as? String }
+        guard rawSources.count == items.count else { return .failure(.settings) }
         var sources = Set<PaymentSource>()
         for raw in rawSources {
             guard let source = PaymentSource(rawValue: raw), source.isSupported else { return .failure(.settings) }

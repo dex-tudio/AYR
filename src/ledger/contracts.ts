@@ -65,6 +65,21 @@ export function positiveMoney(value: string, maximum: Money): Money | null {
 export function identityDefault(metadata: AppSnapshot['metadata'], raw: string): Money | null {
   return metadata.identities.find(item => item.raw === raw)?.defaultBudget ?? null;
 }
+const supportedRaws = (metadata: AppSnapshot['metadata']) => metadata.sources.filter(item => item.isSupported).map(item => item.raw);
+/** Titles of the sources that can be connected, for texts that must not hard-code a payment source. */
+export function supportedTitles(metadata: AppSnapshot['metadata']): string {
+  return metadata.sources.filter(item => item.isSupported).map(item => item.title).join(', ');
+}
+/** The form starts from saved settings. Saved sources that are not supported (SwiftUI allowed them) are dropped, so the form can be saved;
+ *  if none is left it starts from the supported ones. */
+export function draftFromSettings(settings: NonNullable<AppSnapshot['ledger']>['settings'], metadata: AppSnapshot['metadata']): SettingsDraft {
+  const supported = supportedRaws(metadata);
+  const kept = settings.sources.filter(raw => supported.includes(raw));
+  return {
+    identity: settings.identity, dailyBudget: settings.dailyBudget, customMonthly: settings.monthlyBudget !== null,
+    monthlyBudget: settings.monthlyBudget ?? '', sources: kept.length > 0 ? kept : supported,
+  };
+}
 /** The request the user may send, or null while the form is invalid. Support comes from metadata, never from a JS list. */
 export function settingsRequest(draft: SettingsDraft, metadata: AppSnapshot['metadata'], finishOnboarding: boolean): SettingsRequest | null {
   const dailyBudget = positiveMoney(draft.dailyBudget, metadata.maximumMoney);
