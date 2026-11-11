@@ -98,6 +98,7 @@ private struct SpendingWidgetView: View {
                 } else {
                     // Lock screen: the system tints this, so it carries no color of its own.
                     VStack(alignment: .leading, spacing: 2) {
+                        // caption2 (11pt) on purpose: the rectangular lock-screen widget has room for three short lines only.
                         Text("오늘").font(.caption2)
                         Text(money(total)).font(.headline).minimumScaleFactor(0.4).lineLimit(1).widgetAccentable()
                         Text(phrase(total: total, budget: entry.budget))
@@ -138,6 +139,8 @@ private struct SpendingLiveActivity: Widget {
             .foregroundStyle(AYRTheme.text)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
+            // The Live Activity has a fixed height for four lines; the largest standard text size keeps the last line from being cut off.
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             .activityBackgroundTint(AYRTheme.background)
             .activitySystemActionForegroundColor(AYRTheme.text)
             .privacySensitive()

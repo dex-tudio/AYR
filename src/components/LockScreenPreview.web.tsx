@@ -27,7 +27,7 @@ function LockWidget({ shown }: { shown: Shown }) {
   return <Mock testID="lock-widget" label={`잠금화면 위젯 미리보기. 오늘 쓴 돈 ${shown.total}. ${shown.phrase}`} style={[styles.wallpaper]}>
     <View style={styles.lockWidget}>
       <Text style={{ color: onWallpaper, fontSize: 12 }}>오늘</Text>
-      <FitAmount text={shown.total} max={20} min={6} color={onWallpaper} testID="lock-widget-amount" />
+      <FitAmount text={shown.total} max={20} min={2} color={onWallpaper} testID="lock-widget-amount" />
       <Text style={{ color: onWallpaper, fontSize: 12 }}>{shown.phrase}</Text>
     </View>
   </Mock>;
@@ -38,7 +38,7 @@ function HomeWidget({ shown }: { shown: Shown }) {
   return <Mock testID="home-widget" label={`작은 위젯 미리보기. 오늘 쓴 돈 ${shown.total}. ${shown.phrase}. 하루 기준 ${shown.budget}`}
     style={[styles.small, { backgroundColor: theme.background, borderColor: theme.line }]}>
     <Text style={{ color: theme.accent, fontSize: 12, fontWeight: '700' }}>AYR / 오늘</Text>
-    <FitAmount text={shown.total} max={26} min={6} testID="home-widget-amount" />
+    <FitAmount text={shown.total} max={26} min={2} testID="home-widget-amount" />
     <Text style={{ color: theme[shown.band], fontSize: 15, fontWeight: '700' }}>{shown.phrase}</Text>
     <Text style={{ color: theme.secondary, fontSize: 12 }}>하루 기준 {shown.budget}</Text>
   </Mock>;
@@ -51,7 +51,7 @@ function ActivityCard({ testID, amountID, total, message, band, base }: {
   return <Mock testID={testID} label={`Live Activity 미리보기. 오늘 쓴 돈 ${total}. ${message}${base ? `. 하루 기준 ${base}` : ''}`}
     style={[styles.activity, { backgroundColor: theme.background, borderColor: theme.line }]}>
     <Text style={{ color: theme.accent, fontSize: 12, fontWeight: '700' }}>AYR / 오늘 쓴 돈</Text>
-    <FitAmount text={total} max={32} min={6} testID={amountID} />
+    <FitAmount text={total} max={32} min={2} testID={amountID} />
     <Text style={{ color: band ? theme[band] : theme.ink, fontSize: 16, fontWeight: '700' }}>{message}</Text>
     {base && <Text style={{ color: theme.secondary, fontSize: 12 }}>하루 기준 {base}</Text>}
   </Mock>;
@@ -63,7 +63,7 @@ function Island({ shown }: { shown: Shown }) {
   return <View style={styles.islands}>
     <Mock testID="island-compact" label={`Dynamic Island 작은 모양 미리보기. 오늘 쓴 돈 ${shown.total}`} style={styles.compact}>
       {icon}
-      <View style={{ flex: 1 }}><FitAmount text={shown.total} max={13} min={6} color={onWallpaper} testID="island-compact-amount" /></View>
+      <View style={{ flex: 1 }}><FitAmount text={shown.total} max={13} min={2} color={onWallpaper} testID="island-compact-amount" /></View>
     </Mock>
     <Mock testID="island-minimal" label="Dynamic Island 가장 작은 모양 미리보기. 금액 없이 아이콘만 보여요" style={styles.minimal}>{icon}</Mock>
   </View>;
@@ -89,7 +89,7 @@ export function LockScreenPreview({ snapshot }: { snapshot: AppSnapshot }) {
       <Island shown={shown} />
       <Caption>날짜가 바뀐 뒤 Live Activity</Caption>
       <ActivityCard testID="activity-expired" amountID="activity-expired-amount" total="0원" message={expiredMessage} />
-      <Body small>한 줄 위젯과 잠금화면 위젯은 iOS가 배경과 색에 맞춰 단색으로 보여줘요. 새날이 되면 0원부터 다시 보여줘요.</Body>
+      <Body small>한 줄 위젯과 잠금화면 위젯은 iOS가 배경과 색에 맞춰 단색으로 보여줘요. 새날 이후 다시 확인하면 0원부터 보여요. 반영 시점은 iOS가 정해요.</Body>
     </> : <>
       <Mock testID="widget-fallback" label={`위젯 미리보기. ${fallback}`} style={[styles.small, styles.fallback, { backgroundColor: theme.background, borderColor: theme.line }]}>
         <Text style={{ color: theme.ink, fontSize: 14, fontWeight: '700' }}>{fallback}</Text>
@@ -101,13 +101,13 @@ export function LockScreenPreview({ snapshot }: { snapshot: AppSnapshot }) {
 }
 
 const styles = StyleSheet.create({
-  wallpaper: { backgroundColor: '#2B3326', borderRadius: 24, padding: 16, alignSelf: 'stretch' },
-  lockWidget: { gap: 2, borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)', borderRadius: 16, padding: 12, maxWidth: 220 },
+  wallpaper: { backgroundColor: '#2B3326', borderRadius: 24, padding: 12, alignSelf: 'stretch' },
+  lockWidget: { gap: 2, borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)', borderRadius: 16, padding: 8, maxWidth: 220 },
   small: { width: '100%', maxWidth: 170, minHeight: 158, borderWidth: 1, borderRadius: 22, padding: 16, gap: 8 },
   fallback: { justifyContent: 'center' },
   activity: { width: '100%', maxWidth: 360, borderWidth: 1, borderRadius: 22, padding: 16, gap: 8 },
-  islands: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#2B3326', borderRadius: 24, padding: 16 },
-  compact: { flex: 1, maxWidth: 230, height: 36, borderRadius: 18, backgroundColor: '#000000', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  islands: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12, backgroundColor: '#2B3326', borderRadius: 24, padding: 12 },
+  compact: { width: '100%', maxWidth: 230, height: 36, borderRadius: 18, backgroundColor: '#000000', paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center', gap: 6 },
   minimal: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#000000', alignItems: 'center', justifyContent: 'center' },
   icon: { width: 12, height: 9, borderRadius: 3 },
 });

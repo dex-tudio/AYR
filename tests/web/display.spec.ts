@@ -31,7 +31,26 @@ test('the preview is labelled as a design preview and shows the app amount, phra
   await page.screenshot({ path: `test-results/display-${info.project.name}.png`, fullPage: true });
 });
 
-test('after midnight the Live Activity asks for a refresh instead of keeping the old amount', async ({ page }) => {
+// The web has no Dynamic Type; 160 CSS px is a 320px screen at 200%. Real iOS large text on the widget/Activity is a device check.
+test.describe('at 200% enlargement (160 CSS px)', () => {
+  test.use({ viewport: { width: 160, height: 740 } });
+  for (const scenario of ['default', 'maximum']) {
+    test(`${scenario}: amounts, scenario picker and restart are not cut off`, async ({ page }) => {
+      await openDisplay(page, scenario);
+      for (const id of amounts) await fits(page, page.getByTestId(id));
+      for (const target of [page.getByLabel('미리보기 시나리오'), page.getByRole('button', { name: '다시 시작' })]) {
+        const box = await target.boundingBox();
+        expect(box!.x).toBeGreaterThanOrEqual(0);
+        expect(box!.x + box!.width).toBeLessThanOrEqual(160);
+        expect(box!.height).toBeGreaterThanOrEqual(44);
+      }
+      expect(await noOverflow(page)).toBe(true);
+    });
+  }
+});
+
+// A fixed Korean notice, not a midnight calculation: the real day change is decided by the Swift widget (day != today, isStale).
+test('the static notice for a Live Activity after the date changed is shown', async ({ page }) => {
   await openDisplay(page);
   const expired = page.getByTestId('activity-expired');
   await expect(expired.getByTestId('activity-expired-amount')).toHaveText('0원');

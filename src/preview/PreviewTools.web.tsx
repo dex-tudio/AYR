@@ -13,14 +13,15 @@ const open = (scenario: string) => location.assign(scenario === 'default' ? '/' 
 export function PreviewTools() {
   const theme = useTheme();
   const listed = scenarios.some(([value]) => value === activeScenario);
-  const control = { minHeight: 44, fontSize: 16, color: theme.limeInk, borderRadius: 12, border: `1px solid ${theme.limeInk}`, background: 'rgba(255,255,255,0.55)', padding: '0 12px' };
+  // Solid theme tokens (not the lime bar) so the picker and its open list keep their contrast in light and dark.
+  const control = { minHeight: 44, fontSize: 16, color: theme.ink, borderRadius: 12, border: `1px solid ${theme.ink}`, background: theme.surface, padding: '0 12px' };
   return <View style={{ backgroundColor: theme.lime, padding: 12, gap: 6 }}>
     <Text style={{ color: theme.limeInk, fontSize: 14, fontWeight: '700' }}>미리보기 · 가짜 기록</Text>
     <Text style={{ color: theme.limeInk, fontSize: 12 }}>실제 장부와 연결되지 않아요. 새로고침하면 처음 가짜 값으로 돌아가요. 가짜 기준일은 2026-11-11이고 날짜 변경은 2026-11-12예요.</Text>
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-      <select aria-label="미리보기 시나리오" value={activeScenario} onChange={event => open(event.target.value)} style={{ ...control, flex: 1, minWidth: 140 }}>
-        {scenarios.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-        {!listed && <option value={activeScenario}>{activeScenario}</option>}
+      <select aria-label="미리보기 시나리오" value={activeScenario} onChange={event => open(event.target.value)} style={{ ...control, flex: 1, minWidth: 100 }}>
+        {scenarios.map(([value, label]) => <option key={value} value={value} style={{ color: theme.ink, background: theme.surface }}>{label}</option>)}
+        {!listed && <option value={activeScenario} style={{ color: theme.ink, background: theme.surface }}>{activeScenario}</option>}
       </select>
       <button type="button" onClick={() => open(activeScenario)} style={{ ...control, fontWeight: 700, minWidth: 44 }}>다시 시작</button>
     </View>

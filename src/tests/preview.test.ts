@@ -21,7 +21,17 @@ test('the preview tools exist only behind the web boundary', () => {
   const read = (path: string) => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
   assert.doesNotMatch(read('src/preview/PreviewTools.ios.tsx'), /service\.web|preview\.ts|ledger\/preview/);
   assert.doesNotMatch(read('app/_layout.tsx'), /service\.web|ledger\/preview/);
-  assert.doesNotMatch(read('src/components/LockScreenPreview.tsx'), /service\.web|ledger\/preview|PreviewTools/);
+  assert.doesNotMatch(read('src/components/LockScreenPreview.web.tsx'), /service\.web|ledger\/preview|PreviewTools/);
+  assert.doesNotMatch(read('src/components/LockScreenPreview.ios.tsx'), /react-native|FitAmount/);
+});
+test('the design preview copies the widget texts of the Swift source', () => {
+  const read = (path: string) => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
+  const swift = read('iOS/Widgets/AYRWidgets.swift');
+  const preview = read('src/components/LockScreenPreview.web.tsx');
+  for (const text of ['날짜가 바뀌었어요 · 앱에서 새로고침', '앱에서 기록 확인', 'AYR에서 시작하기', '하루 기준', 'AYR / 오늘 쓴 돈', 'AYR / 오늘']) {
+    assert.ok(swift.includes(text), `Swift widget lost "${text}"`);
+    assert.ok(preview.includes(text), `preview lost "${text}"`);
+  }
 });
 test('read failure does not turn into a successful zero', async () => {
   const service = new PreviewLedger('readFailure');
