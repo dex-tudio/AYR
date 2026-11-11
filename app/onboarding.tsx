@@ -29,7 +29,7 @@ export default function Onboarding() {
     if (await store.saveSettings(request) && step < 5) setStep(step + 1);
   };
   return <ScreenFrame title={titles[step - 1]}>
-    <View accessibilityRole="progressbar" accessibilityValue={{ min: 1, max: 5, now: step, text: `5단계 중 ${step}단계` }} style={styles.progress}>
+    <View accessibilityRole="progressbar" accessibilityValue={{ min: 1, max: 5, now: step, text: `5단계 중 ${step}단계` }} style={[styles.progress, { backgroundColor: theme.line }]}>
       <View style={[styles.fill, { width: `${step * 20}%`, backgroundColor: theme.lime }]} />
     </View>
     <Text style={{ color: theme.secondary, fontSize: 12 }}>시작하기 {step}/5</Text>
@@ -58,6 +58,6 @@ export default function Onboarding() {
   </ScreenFrame>;
 }
 const styles = StyleSheet.create({
-  progress: { height: 6, borderRadius: 3, backgroundColor: '#8884', overflow: 'hidden' }, fill: { height: 6, borderRadius: 3 },
+  progress: { height: 6, borderRadius: 3, overflow: 'hidden' }, fill: { height: 6, borderRadius: 3 },
   nav: { flexDirection: 'row', gap: 12, alignItems: 'center', justifyContent: 'flex-end' },
 });
