@@ -221,15 +221,21 @@ test('a late result for an earlier month never overwrites the month that was cho
 });
 
 test('a late failure of an earlier month does not replace the chosen month either', async () => {
-  const { service, pending } = deferredService();
-  const failing = new MonthStore({ getMonth: offset => offset === -1 ? Promise.reject(new Error('늦은 실패')) : service.getMonth(offset) });
-  failing.select(-1);
-  await new Promise(resolve => setTimeout(resolve, 0));
-  failing.select(0);
-  pending[0].finish();
-  await new Promise(resolve => setTimeout(resolve, 0));
-  assert.equal(failing.getState().month?.offset, 0);
-  assert.equal(failing.getState().error, null);
+  const preview = new PreviewLedger();
+  let rejectEarlier!: (reason: Error) => void;
+  const store = new MonthStore({ getMonth: offset => offset === -1
+    ? new Promise<MonthViewState>((_, reject) => { rejectEarlier = reject; }) // held back until after the chosen month arrived
+    : preview.getMonth(offset) });
+  const settle = () => new Promise(resolve => setTimeout(resolve, 0));
+  store.select(-1);
+  store.select(0);
+  await settle();
+  assert.equal(store.getState().month?.offset, 0); // the chosen month is in
+  rejectEarlier(new Error('늦은 실패'));
+  await settle();
+  assert.equal(store.getState().month?.offset, 0);
+  assert.equal(store.getState().error, null);
+  assert.equal(store.getState().loading, false);
 });
 
 test('moving past the oldest or newest month does nothing', async () => {

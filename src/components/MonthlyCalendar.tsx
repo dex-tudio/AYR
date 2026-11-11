@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { formatMoney } from '../ledger/contracts';
 import type { MonthDayState, MonthViewState } from '../ledger/contracts';
 import { useTheme } from '../theme';
@@ -12,8 +12,13 @@ export function MonthlyCalendar({ month }: { month: MonthViewState }) {
   const theme = useTheme();
   const [width, setWidth] = useState(0);
   const cell = width / 7;
-  // Each amount shrinks to its own cell (0.6em is wider than any digit or comma), so no digit is cut; only extreme amounts get tiny.
-  const amountSize = (text: string) => cell ? Math.min(12, Math.max(4, Math.floor((cell - 4) / (text.length * 0.6)))) : 12;
+  // iOS shrinks the text itself (adjustsFontSizeToFit, like SwiftUI's minimumScaleFactor). The web has no such thing, so it sizes each amount
+  // to its cell: a digit is at most 0.6em wide and a comma 0.3em, so no digit is cut and only extreme amounts get tiny.
+  const amountSize = (text: string) => {
+    if (Platform.OS !== 'web' || !cell) return 12;
+    const commas = text.split(',').length - 1;
+    return Math.min(12, Math.max(4, Math.floor((cell - 4) / ((text.length - commas) * 0.6 + commas * 0.3))));
+  };
   const label = (day: MonthDayState) => {
     const detail = day.status === 'recorded' ? `${formatMoney(day.total!)}, ${day.phrase}` : statusText[day.status];
     return `${month.title} ${day.day}일, ${detail}`;

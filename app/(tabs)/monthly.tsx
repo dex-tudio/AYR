@@ -50,7 +50,7 @@ export default function Monthly() {
             {formatMoney(month.remaining)} {month.overBudget ? '초과' : '남았어요'}
           </Text>
           <Text testID="month-comparison" style={{ color: theme.secondary, fontSize: 14, lineHeight: 22 }}>{comparisonText(month.comparison)}</Text>
-          <Button label="월 예산 바꾸기" onPress={() => router.push('/edit-settings')} />
+          <Button label="이번 달 예산 바꾸기" onPress={() => router.push('/edit-settings')} />
         </Card>
         <Card><MonthlyCalendar month={month} /></Card>
         <Card title="어떤 날들이었나요?">

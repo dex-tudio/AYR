@@ -158,7 +158,7 @@ for bad in [-12, 1, Int.min, Int.max] { check(LedgerBridgeState.month(ledger: fe
 let oldest = LedgerBridgeState.month(ledger: feb, offset: -11, now: marchNow)!
 check(oldest["title"] as? String == "2025년 4월" && oldest["canGoPrevious"] as? Bool == false)
 // 기록 없음 / 0원 / 아직 오지 않은 날을 구분한다
-var late = try monthLedger(start: "2026-03-05")
+let late = try monthLedger(start: "2026-03-05")
 let lateMonth = LedgerBridgeState.month(ledger: late, offset: 0, now: at("2026-03-10"))!
 let statuses = monthDays(lateMonth).map { $0["status"] as! String }
 check(statuses[0..<4].allSatisfy { $0 == "noRecord" } && statuses[4..<10].allSatisfy { $0 == "recorded" } && statuses[10...].allSatisfy { $0 == "future" })

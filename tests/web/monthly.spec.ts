@@ -88,7 +88,7 @@ test('adding and deleting a spending changes the month total together with today
 
 test('changing the monthly budget reuses the settings editor and keeps last month budget', async ({ page }) => {
   await openMonthly(page);
-  await page.getByRole('button', { name: '월 예산 바꾸기' }).click();
+  await page.getByRole('button', { name: '이번 달 예산 바꾸기' }).click();
   await expect(page.getByRole('heading', { name: '내 기준 바꾸기' })).toBeVisible();
   await page.getByLabel('월 예산(원)').fill('200000');
   await page.getByRole('button', { name: '저장', exact: true }).click();

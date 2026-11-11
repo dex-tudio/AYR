@@ -37,7 +37,7 @@ const sourceInfos = [
 
 export type PreviewScenario = 'default' | 'firstStart' | 'empty' | 'readFailure' | 'maximum' | 'readFailureOnce'
   | 'carried' | 'saveFailureOnce' | 'dayChange' | 'listChange'
-  | 'firstStartSaveFailureOnce' | 'corrupt' | 'corruptResetFailureOnce' | 'mixedSources' | 'monthReadFailureOnce' | 'laterReadFailureOnce';
+  | 'firstStartSaveFailureOnce' | 'corrupt' | 'corruptResetFailureOnce' | 'mixedSources' | 'monthReadFailureOnce';
 
 // Same texts as Core `phrase`; a test compares them with the Swift source.
 export const phrases: Record<Band, string> = { calm: '아직은 여유 있네', caution: '오늘 좀 쓰는데?', exceeded: '님 부자임?' };
@@ -189,9 +189,7 @@ export class PreviewLedger implements LedgerService {
     this.refresh();
     if (this.corrupted) return this.build(storeMessages.unreadable, true, true);
     // readFailureOnce: the first read fails, a retry succeeds.
-    // laterReadFailureOnce: the third read fails (Today, then Settings, then the screen opened from Settings), so a screen reached by navigation can show a failed read.
-    const failAt = this.scenario === 'readFailureOnce' ? 0 : this.scenario === 'laterReadFailureOnce' ? 2 : -1;
-    const failing = this.scenario === 'readFailure' || (failAt >= 0 && this.reads++ === failAt);
+    const failing = this.scenario === 'readFailure' || (this.scenario === 'readFailureOnce' && this.reads++ === 0);
     return this.build(failing ? '기록을 불러오지 못했어요. 다시 시도해주세요.' : null, failing);
   }
   async getMonth(offset: number): Promise<MonthViewState> {
