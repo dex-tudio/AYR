@@ -17,6 +17,13 @@ test('read failure does not turn into a successful zero', async () => {
   assert.equal(state.ledger, null);
   assert.ok(state.error?.message);
 });
+test('read failure once recovers on the next read', async () => {
+  const service = new PreviewLedger('readFailureOnce');
+  assert.equal((await service.getSnapshot()).ledger, null);
+  const retried = await service.getSnapshot();
+  assert.equal(retried.error, null);
+  assert.equal(retried.ledger?.current.total, '32400');
+});
 test('first start remains distinguishable from configured zero', async () => {
   assert.equal((await new PreviewLedger('firstStart').getSnapshot()).ledger?.onboardingCompleted, false);
   assert.equal((await new PreviewLedger('empty').getSnapshot()).ledger?.current.total, '0');

@@ -3,7 +3,10 @@ import AYRCore
 
 @main
 struct AYRApp: App {
+#if DEBUG
+    // Debug RN preview 전용. 작업 6에서 RN이 기본 진입이 되면 무조건 적용한다.
     @UIApplicationDelegateAdaptor(AYRExpoAppDelegate.self) private var appDelegate
+#endif
     @StateObject private var model = AppModel()
     @Environment(\.scenePhase) private var scenePhase
     @State private var showingResetConfirmation = false

@@ -6,8 +6,8 @@ export const ledgerService: LedgerService = {
     try {
       const { requireNativeModule } = await import('expo-modules-core');
       native = requireNativeModule<LedgerService>('AYRNative');
-    } catch {
-      throw new Error('AYRNative를 찾지 못했어요. 전용 iOS 앱 빌드에서 다시 실행해주세요.');
+    } catch (cause) {
+      throw new Error('AYRNative를 찾지 못했어요. 전용 iOS 앱 빌드에서 다시 실행해주세요.', { cause });
     }
     return native.getSnapshot();
   },

@@ -3,6 +3,7 @@ import { useFocusEffect } from 'expo-router';
 import { ActivityIndicator, AppState, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ledgerService } from '../src/ledger/service';
+import { assertSnapshotMoney } from '../src/ledger/contracts';
 import type { AppSnapshot } from '../src/ledger/contracts';
 import { TodaySummary } from '../src/components/TodaySummary';
 import { useTheme } from '../src/theme';
@@ -18,7 +19,7 @@ export default function Today() {
     const request = ++requests.latest;
     setRefreshing(true);
     try {
-      const next = await ledgerService.getSnapshot();
+      const next = assertSnapshotMoney(await ledgerService.getSnapshot());
       if (request !== requests.latest) return;
       setSnapshot(next);
       setError(null);
@@ -35,7 +36,10 @@ export default function Today() {
     return () => { ++requests.latest; subscription.remove(); clearInterval(timer); };
   }, [reload, requests]));
   const message = error ?? snapshot?.error?.message;
-  return <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+  // Root marker shown only after getSnapshot succeeded without a read error, whether or not onboarding is done.
+  const connected = snapshot !== null && !error && !snapshot.error;
+  return <SafeAreaView testID={connected ? (Platform.OS === 'ios' ? 'ayr-native-connected' : 'ayr-preview-connected') : undefined}
+    style={[styles.safe, { backgroundColor: theme.background }]}>
     <ScrollView contentContainerStyle={styles.page} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void reload()} />}>
       {Platform.OS === 'web' && <View style={[styles.preview, { backgroundColor: theme.lime }]}>
         <Text style={{ color: theme.limeInk, fontSize: 14, fontWeight: '700' }}>미리보기 · 가짜 기록</Text>
@@ -51,7 +55,7 @@ export default function Today() {
         <Text style={{ color: theme.ink, fontSize: 20, fontWeight: '700' }}>시작 설정을 먼저 마쳐주세요</Text>
         <Text style={{ color: theme.secondary }}>신분·하루 기준·결제 수단을 설정하면 오늘 지출을 볼 수 있어요.</Text>
       </View>}
-      {snapshot?.ledger?.onboardingCompleted && <View testID={Platform.OS === 'ios' ? 'ayr-native-connected' : 'ayr-preview-connected'}><TodaySummary snapshot={snapshot} /></View>}
+      {snapshot?.ledger?.onboardingCompleted && <TodaySummary snapshot={snapshot} />}
     </ScrollView>
   </SafeAreaView>;
 }

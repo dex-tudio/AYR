@@ -10,6 +10,7 @@
     "test": "node --experimental-strip-types --test src/tests/*.test.ts",
     "build:web": "expo export --platform web --output-dir dist-web",
     "build:ios-js": "expo export --platform ios --output-dir dist-ios",
+    "pretest:web": "npm run build:web",
     "test:web": "playwright test"
   },
   "dependencies": {

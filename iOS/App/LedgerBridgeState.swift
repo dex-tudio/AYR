@@ -2,10 +2,12 @@ import Foundation
 import AYRCore
 
 enum LedgerBridgeState {
-    static func positiveMoney(_ text: String) -> Int? {
-        guard !text.isEmpty, text.allSatisfy({ $0.isASCII && $0.isNumber }),
-              let value = Int(text), value > 0, value <= maximumMoney else { return nil }
-        return value
+    /// 구간 경계는 Core `phrase`가 정한다. 같은 기준에서 합계 0과 기준 금액이 받는 문구로 비교해 임계값을 복제하지 않는다.
+    static func band(total: Int, budget: Int) -> String {
+        let current = phrase(total: total, budget: budget)
+        if current == phrase(total: 0, budget: budget) { return "calm" }
+        if current == phrase(total: budget, budget: budget) { return "exceeded" }
+        return "caution"
     }
 
     static func snapshot(ledger: SpendingLedger?, error: String? = nil, canReset: Bool = false,
@@ -15,7 +17,6 @@ enum LedgerBridgeState {
         if let ledger {
             let total = ledger.current.total
             let budget = ledger.currentBudget
-            let band = total < budget / 2 + budget % 2 ? "calm" : total < budget ? "caution" : "exceeded"
             ledgerValue = [
                 "onboardingCompleted": ledger.onboardingCompleted,
                 "current": ["day": ledger.current.day, "total": String(total), "budget": String(budget),
@@ -29,7 +30,7 @@ enum LedgerBridgeState {
                 "lastAttempt": ledger.lastAttempt.map {
                     ["date": ISO8601DateFormatter().string(from: $0.date), "status": $0.status.rawValue, "message": $0.status.message]
                 } as Any? ?? NSNull(),
-                "phrase": phrase(total: total, budget: budget), "band": band
+                "phrase": phrase(total: total, budget: budget), "band": band(total: total, budget: budget)
             ] as [String: Any]
         }
         return [

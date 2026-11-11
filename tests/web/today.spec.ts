@@ -14,10 +14,22 @@ test('read error does not display a zero balance and can retry', async ({ page }
   await expect(page.getByTestId('today-total')).toHaveCount(0);
   await page.getByRole('button', { name: '다시 불러오기' }).click();
   await expect(page.getByRole('alert')).toBeVisible();
+  await expect(page.getByTestId('ayr-preview-connected')).toHaveCount(0);
+});
+test('retry after a failed read reads again and recovers', async ({ page }) => {
+  await page.goto('/?scenario=readFailureOnce');
+  await expect(page.getByRole('alert')).toContainText('기록을 불러오지 못했어요');
+  await expect(page.getByTestId('ayr-preview-connected')).toHaveCount(0);
+  await page.getByRole('button', { name: '다시 불러오기' }).click();
+  await expect(page.getByTestId('today-total')).toHaveText('32,400원');
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(page.getByTestId('ayr-preview-connected')).toBeVisible();
 });
 test('first start is distinct from configured empty records', async ({ page }) => {
   await page.goto('/?scenario=firstStart');
   await expect(page.getByText('시작 설정을 먼저 마쳐주세요')).toBeVisible();
+  // The native smoke relies on this marker for a fresh ledger that has not finished onboarding.
+  await expect(page.getByTestId('ayr-preview-connected')).toBeVisible();
   await expect(page.getByTestId('today-total')).toHaveCount(0);
   await page.goto('/?scenario=empty');
   await expect(page.getByTestId('today-total')).toHaveText('0원');
