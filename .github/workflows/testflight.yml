@@ -55,8 +55,11 @@ jobs:
         run: npm run typecheck && npm test && npm run build:ios-js
       - name: Require reviewed native dependency lock
         run: test -s Podfile.lock
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3.13'
       - name: Install CocoaPods
-        run: sudo gem install cocoapods -v 1.17.0 --no-document
+        run: gem install cocoapods -v 1.17.0 --no-document
       - name: Archive, export and optionally upload
         env:
           APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}

@@ -14,7 +14,9 @@ test('the native lock matches the Podfile and both workflows pin its CocoaPods v
   for (const workflow of ['ci', 'testflight']) {
     const config = load(readFileSync(`.github/workflows/${workflow}.yml`, 'utf8'));
     const runs = Object.values(config.jobs).flatMap((job: any) => job.steps.map((step: any) => step.run ?? ''));
-    assert.ok(runs.includes(`sudo gem install cocoapods -v ${lock.COCOAPODS} --no-document`), workflow);
+    assert.ok(runs.includes(`gem install cocoapods -v ${lock.COCOAPODS} --no-document`), workflow);
+    const steps = Object.values(config.jobs).flatMap((job: any) => job.steps);
+    assert.equal(steps.find((step: any) => step.uses === 'ruby/setup-ruby@v1')?.with['ruby-version'], '3.3.13', workflow);
   }
 });
 

@@ -53,8 +53,11 @@ jobs:
           node-version: 22.18.0
           cache: npm
       - run: npm ci
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3.13'
       - name: Install CocoaPods
-        run: sudo gem install cocoapods -v 1.17.0 --no-document
+        run: gem install cocoapods -v 1.17.0 --no-document
       - name: Prepare workspace
         # The first unsigned build supplies a lock artifact; every checkout with a lock uses --deployment.
         env:
