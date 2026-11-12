@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 bash -n scripts/testflight-build.sh
+bash -n scripts/prepare-ios.sh
 python3 - <<'PY'
 import base64, datetime, json, os, plistlib, shutil, subprocess, tempfile
 from pathlib import Path
@@ -10,6 +11,9 @@ with tempfile.TemporaryDirectory(prefix='ayr-signing-check-') as scratch:
     root = Path(scratch)
     for directory in ['bin', 'workspace', 'runner', 'home']:
         (root / directory).mkdir()
+    (root / 'workspace/scripts').mkdir()
+    shutil.copy('scripts/prepare-ios.sh', root / 'workspace/scripts/prepare-ios.sh')
+    pod_lock = root / 'workspace/Podfile.lock'
     stub = root / 'bin/stub'
     stub.write_text('''#!/usr/bin/env python3
 import json, os, sys
@@ -25,6 +29,8 @@ if command == 'security':
 elif command == 'openssl':
     print('fixture-random-password')
 elif command == 'xcodegen':
+    if os.environ.get('FAIL_GENERATE') == 'true':
+        sys.exit(8)
     spec = json.loads(Path(args[args.index('--spec') + 1]).read_text())
     for target, uuid in [('AYR', '11111111-1111-1111-1111-111111111111'), ('AYRWidgets', '22222222-2222-2222-2222-222222222222')]:
         settings = spec['targets'][target]['settings']['base']
@@ -32,8 +38,21 @@ elif command == 'xcodegen':
         assert settings['CODE_SIGN_STYLE'] == 'Manual'
         assert (Path(os.environ['HOME']) / 'Library/Developer/Xcode/UserData/Provisioning Profiles' / f'{uuid}.mobileprovision').exists()
     (Path(os.environ['RUNNER_TEMP']) / 'generated').touch()
+elif command == 'pod':
+    assert args.pop(0) == '_1.17.0_', 'CocoaPods must be invoked with its locked version'
+    if args == ['--version']:
+        print(os.environ.get('POD_VERSION', '1.17.0'))
+    else:
+        assert args == (['install', '--deployment'] if Path('Podfile.lock').exists() else ['install'])
+        assert (Path(os.environ['RUNNER_TEMP']) / 'generated').exists()
+        if os.environ.get('FAIL_POD') == 'true':
+            sys.exit(7)
+        (Path(os.environ['RUNNER_TEMP']) / 'pods-installed').touch()
 elif command == 'xcodebuild':
     if 'archive' in args:
+        assert args[args.index('-workspace') + 1] == 'AYR.xcworkspace'
+        assert '-project' not in args
+        assert (Path(os.environ['RUNNER_TEMP']) / 'pods-installed').exists()
         assert 'CURRENT_PROJECT_VERSION=42.2' in args
         if os.environ.get('FAIL_ARCHIVE') == 'true':
             sys.exit(9)
@@ -53,7 +72,7 @@ elif command == 'xcrun':
         print('VERIFY FAILED with 1 error')
 ''')
     stub.chmod(0o755)
-    for command in ['security', 'openssl', 'xcodegen', 'xcodebuild', 'xcrun']:
+    for command in ['security', 'openssl', 'xcodegen', 'pod', 'xcodebuild', 'xcrun']:
         (root / 'bin' / command).symlink_to(stub)
     def encode(data):
         return base64.b64encode(data).decode()
@@ -77,6 +96,11 @@ elif command == 'xcrun':
     cases = [('export', {}, True),
              ('upload', {'UPLOAD_TO_TESTFLIGHT': 'true'}, True),
              ('archive failure', {'FAIL_ARCHIVE': 'true'}, False),
+             ('generation failure', {'FAIL_GENERATE': 'true'}, False),
+             ('pod failure', {'FAIL_POD': 'true'}, False),
+             ('wrong CocoaPods version', {'POD_VERSION': '0.0.0'}, False),
+             ('missing pod lock', {}, False),
+             ('explicit first pod resolution', {'AYR_BOOTSTRAP_PODS': '1'}, True),
              ('wrong team', {'APPLE_TEAM_ID': 'WRONGTEAM'}, False),
              ('expired profile', {'APPLE_APP_PROFILE_BASE64': profile('com.codemaker-kim.ayr',
                  '11111111-1111-1111-1111-111111111111', ExpirationDate=datetime.datetime(2000, 1, 1))}, False),
@@ -85,7 +109,10 @@ elif command == 'xcrun':
              ('invalid build number', {'GITHUB_RUN_NUMBER': '10000'}, False),
              ('rejected bundle with exit 0', {'UPLOAD_TO_TESTFLIGHT': 'true', 'REJECT_BUNDLE': 'true'}, False)]
     for name, changes, success in cases:
-        for marker in ['uploaded', 'generated']:
+        pod_lock.unlink(missing_ok=True)
+        if name not in ['missing pod lock', 'explicit first pod resolution']:
+            pod_lock.write_text('fixture locked pods')
+        for marker in ['uploaded', 'generated', 'pods-installed']:
             (root / 'runner' / marker).unlink(missing_ok=True)
         result = subprocess.run(['bash', str(script)], env=dict(environment, **changes), capture_output=True, text=True)
         assert (result.returncode == 0) == success, f'{name}: unexpected exit {result.returncode}: {result.stderr}'
@@ -101,5 +128,5 @@ elif command == 'xcrun':
         else:
             assert not uploaded.exists(), f'{name}: unexpected upload'
         print(f'PASS TestFlight {name}')
-print('TestFlight pipeline checks: 9 passed (Apple commands stubbed)')
+print('TestFlight pipeline checks: 14 passed (Apple and pod commands stubbed)')
 PY

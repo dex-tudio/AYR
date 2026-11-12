@@ -21,19 +21,87 @@ jobs:
         run: |
           apt-get update && apt-get install -y --no-install-recommends python3
           bash scripts/testflight-check.sh
-  ios:
-    runs-on: macos-15
+          bash scripts/select-xcode-check.sh
+  web:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Select Xcode 26 or newer
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.18.0
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck && npm test
+      - run: npm run build:web && npm run build:ios-js
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:web
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: web-failure
+          path: test-results/
+  ios:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode 26.4.1
         run: bash scripts/select-xcode.sh
       - name: Install XcodeGen
         run: brew install xcodegen
-      - name: Generate Xcode project
-        run: xcodegen generate
-      - name: Build app and widgets without signing
-        run: >-
-          xcodebuild -project AYR.xcodeproj -scheme AYR
-          -configuration Debug -sdk iphonesimulator
-          -destination 'generic/platform=iOS Simulator'
-          CODE_SIGNING_ALLOWED=NO build
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.18.0
+          cache: npm
+      - run: npm ci
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3.13'
+      - name: Install CocoaPods
+        run: gem install cocoapods -v 1.17.0 --no-document
+      - name: Prepare workspace
+        # The first unsigned build supplies a lock artifact; every checkout with a lock uses --deployment.
+        env:
+          AYR_BOOTSTRAP_PODS: ${{ hashFiles('Podfile.lock') == '' && '1' || '0' }}
+        run: bash scripts/prepare-ios.sh
+      - name: Save first resolved Podfile.lock
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-pod-lock-${{ github.sha }}
+          path: Podfile.lock
+          if-no-files-found: error
+      - name: Check locked pods stayed fixed
+        run: |
+          if git ls-files --error-unmatch Podfile.lock >/dev/null 2>&1; then
+            git diff --exit-code -- Podfile.lock
+          fi
+      - name: Build app and widgets for simulator
+        run: |
+          # Local ad-hoc signatures carry App Group entitlements without an Apple identity.
+          for configuration in Debug Release; do
+            xcodebuild -workspace AYR.xcworkspace -scheme AYR \
+              -configuration "$configuration" -sdk iphonesimulator \
+              -derivedDataPath build/iOS -showBuildTimingSummary \
+              -destination 'generic/platform=iOS Simulator' ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \
+              COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=YES \
+              CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= build
+            app="build/iOS/Build/Products/$configuration-iphonesimulator/AYR.app"
+            test -d "$app/PlugIns/AYRWidgets.appex"
+            if [[ "$configuration" == Release ]]; then
+              test -s "$app/main.jsbundle"
+              test -n "$(find "$app/assets" -type f -print -quit)"
+            fi
+          done
+      - name: Release bundle native bridge smoke
+        run: |
+          simulator=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; print(next(d["udid"] for devices in json.load(sys.stdin)["devices"].values() for d in devices if d["name"].startswith("iPhone")))')
+          xcodebuild test -workspace AYR.xcworkspace -scheme AYR -configuration Release \
+            -destination "platform=iOS Simulator,id=$simulator" -derivedDataPath build/iOS \
+            -resultBundlePath build/BridgeSmoke.xcresult -only-testing:AYRBridgeSmoke \
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=YES COMPILER_INDEX_STORE_ENABLE=NO \
+            CODE_SIGNING_ALLOWED=YES CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM=
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: ios-smoke-failure-${{ github.sha }}
+          path: build/BridgeSmoke.xcresult
+          if-no-files-found: ignore

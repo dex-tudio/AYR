@@ -28,6 +28,24 @@ targets:
         CODE_SIGN_ENTITLEMENTS: iOS/metadata/App.entitlements
         INFOPLIST_FILE: iOS/metadata/App-Info.plist
         GENERATE_INFOPLIST_FILE: NO
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+        CLANG_ENABLE_MODULES: YES
+        OTHER_LDFLAGS: ["$(inherited)", "-ObjC"]
+    postBuildScripts:
+      - name: Bundle React Native code and images
+        basedOnDependencyAnalysis: false
+        shell: /bin/bash
+        script: |
+          set -e
+          export PROJECT_ROOT="$PROJECT_DIR"
+          export NODE_BINARY="$(command -v node)"
+          if [[ -f "$PROJECT_ROOT/.xcode.env" ]]; then source "$PROJECT_ROOT/.xcode.env"; fi
+          if [[ -f "$PROJECT_ROOT/.xcode.env.local" ]]; then source "$PROJECT_ROOT/.xcode.env.local"; fi
+          if [[ "$CONFIGURATION" = *Debug* ]]; then export SKIP_BUNDLING=1; fi
+          export ENTRY_FILE="$PROJECT_ROOT/index.js"
+          export CLI_PATH="$("$NODE_BINARY" --print "require.resolve('@expo/cli', { paths: [require.resolve('expo/package.json')] })")"
+          export BUNDLE_COMMAND=export:embed
+          "$PROJECT_ROOT/node_modules/react-native/scripts/react-native-xcode.sh"
     dependencies:
       - package: AYRCore
       - sdk: SwiftUI.framework
@@ -55,6 +73,17 @@ targets:
       - sdk: SwiftUI.framework
       - sdk: WidgetKit.framework
       - sdk: ActivityKit.framework
+  AYRBridgeSmoke:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: iOS/Tests/BridgeSmoke
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.codemaker-kim.ayr.bridge-smoke
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: AYR
 schemes:
   AYR:
     build:
@@ -64,3 +93,7 @@ schemes:
       config: Debug
     archive:
       config: Release
+    test:
+      config: Release
+      targets:
+        - AYRBridgeSmoke

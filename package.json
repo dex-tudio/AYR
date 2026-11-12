@@ -1,0 +1,36 @@
+{
+  "name": "ayr",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "web": "expo start --web --host localhost",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test src/tests/*.test.ts",
+    "build:web": "expo export --platform web --output-dir dist-web",
+    "build:ios-js": "expo export --platform ios --output-dir dist-ios",
+    "pretest:web": "npm run build:web",
+    "test:web": "playwright test"
+  },
+  "dependencies": {
+    "expo": "58.0.23",
+    "expo-clipboard": "~58.0.4",
+    "expo-constants": "~58.0.15",
+    "expo-linking": "~58.0.16",
+    "expo-modules-core": "~58.0.30",
+    "expo-router": "~58.0.30",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-native": "0.88.1",
+    "react-native-safe-area-context": "~5.11.1",
+    "react-native-screens": "~4.30.1",
+    "react-native-web": "^0.21.4"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.0",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "typescript": "^7.0.2"
+  }
+}

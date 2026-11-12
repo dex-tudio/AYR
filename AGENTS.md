@@ -18,7 +18,8 @@
 ## 확정 명세와 진행 상태
 
 - 제품 동작은 [MVP 확정 명세](docs/mvp-spec.md)를 기준으로 한다. 사용자가 대화에서 변경한 요구사항이 문서보다 우선한다.
-- 현재 방향은 **iOS 네이티브 앱**이다. 결제 문자·알림 → 단축어 자동화(본문 전달만) → 앱 App Intent → 합계·신분별 문구 계산 → 잠금화면 위젯·Live Activity 표시. 서버는 없고 거래 정보는 기기 밖으로 나가지 않는다.
+- 현재 방향은 **iOS 네이티브 기능 + React Native/Expo 화면**이다. 결제 문자·알림 → 단축어 자동화(본문 전달만) → Swift App Intent → 합계·신분별 문구 계산 → 잠금화면 위젯·Live Activity 표시. RN은 Swift 브릿지의 조회·설정·당일 수정 결과를 표시한다. 서버는 없고 거래 정보는 기기 밖으로 나가지 않는다.
+- Windows의 `npm ci` → `npm run web`은 세션 메모리의 가짜 기록만 쓰는 브라우저 미리보기다. 실제 iOS는 `AYRNative`와 기존 App Group 장부를 사용하고, 네이티브 모듈이 없을 때 가짜 장부로 대체하지 않는다. 금액은 브릿지에서 10진 문자열, 웹 계산은 BigInt를 쓴다. Expo Go에서는 네이티브 기능을 실행할 수 없다.
 - iOS는 앱이 다른 앱의 알림·문자를 읽지 못하고 트리거 자동화를 대신 만들 수도 없다. 사용자가 자동화를 만들고 동작은 앱의 고정 App Intent `AYR 결제 처리` 1개만 쓴다. 수단별 차이는 앱의 `PaymentSource` 해석기와 설정 안내가 맡는다.
 - PWA·서버·금융 API와 앱인토스 경로는 보류했다. 조사 내용은 [금융 API 검토 기록](docs/financial-api-review.md)에 이전 기록으로 보관한다.
 - Mac이 없어 GitHub Actions macOS 러너로 빌드하고 TestFlight로 설치한다. Xcode 프로젝트는 XcodeGen으로 CI에서 생성한다. 순수 로직(`Core/`)은 Docker `swift` 이미지 또는 CI에서 `swift test`로 검증한다.

@@ -72,7 +72,8 @@ private struct SpendingWidgetView: View {
                 if family == .accessoryInline {
                     Text("오늘 \(money(total)) · \(phrase(total: total, budget: entry.budget))")
                 } else if family == .systemSmall {
-                    VStack(alignment: .leading, spacing: 10) {
+                    // Amount first, then the phrase, then the base it is judged against.
+                    VStack(alignment: .leading, spacing: 6) {
                         HStack {
                             Text("AYR / 오늘").font(.caption.bold())
                             Spacer()
@@ -83,19 +84,28 @@ private struct SpendingWidgetView: View {
                             .font(.system(.title, design: .rounded, weight: .black))
                             .monospacedDigit().lineLimit(1).minimumScaleFactor(0.4)
                         Text(phrase(total: total, budget: entry.budget))
-                            .font(.headline)
+                            .font(.subheadline.bold())
                             .foregroundStyle(spendingColor(total: total, budget: entry.budget))
                             .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                        Text("하루 기준 \(money(entry.budget))")
+                            .font(.caption).foregroundStyle(AYRTheme.secondary)
+                            .lineLimit(1).minimumScaleFactor(0.6)
                     }
                     .foregroundStyle(AYRTheme.text)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .accessibilityElement(children: .combine)
                 } else {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("오늘 \(money(total))").font(.headline).minimumScaleFactor(0.4).lineLimit(1)
+                    // Lock screen: the system tints this, so it carries no color of its own.
+                    VStack(alignment: .leading, spacing: 2) {
+                        // caption2 (11pt) on purpose: the rectangular lock-screen widget has room for three short lines only.
+                        Text("오늘").font(.caption2)
+                        Text(money(total)).font(.headline).minimumScaleFactor(0.4).lineLimit(1).widgetAccentable()
                         Text(phrase(total: total, budget: entry.budget))
                             .font(.caption).fixedSize(horizontal: false, vertical: true)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityElement(children: .combine)
                 }
             } else {
                 Label(entry.message ?? "앱에서 기록 확인", systemImage: "exclamationmark.circle")
@@ -120,10 +130,17 @@ private struct SpendingLiveActivity: Widget {
                 .foregroundStyle(AYRTheme.accent)
                 activityAmount(total)
                 activityMessage(expired: expired, total: total, budget: context.state.budget)
+                if !expired {
+                    Text("하루 기준 \(money(context.state.budget))")
+                        .font(.caption).foregroundStyle(AYRTheme.secondary)
+                        .lineLimit(1).minimumScaleFactor(0.6)
+                }
             }
             .foregroundStyle(AYRTheme.text)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
+            // The Live Activity has a fixed height for four lines; the largest standard text size keeps the last line from being cut off.
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             .activityBackgroundTint(AYRTheme.background)
             .activitySystemActionForegroundColor(AYRTheme.text)
             .privacySensitive()
@@ -144,15 +161,17 @@ private struct SpendingLiveActivity: Widget {
                 Image(systemName: "creditcard").foregroundStyle(AYRTheme.lime)
             } compactTrailing: {
                 Text(money(total)).font(.caption2).lineLimit(1).minimumScaleFactor(0.3)
+                    .accessibilityLabel("오늘 쓴 돈 \(money(total))")
             } minimal: {
                 Image(systemName: "creditcard").foregroundStyle(AYRTheme.lime)
+                    .accessibilityLabel("오늘 쓴 돈")
             }
         }
     }
 
     private func activityAmount(_ total: Int) -> some View {
         Text(money(total))
-            .font(.system(.title2, design: .rounded, weight: .black))
+            .font(.system(.title, design: .rounded, weight: .black))
             .monospacedDigit().lineLimit(1).minimumScaleFactor(0.4)
     }
 
