@@ -10,6 +10,9 @@ final class AYRModule: Module {
         AsyncFunction("getSnapshot") { () async throws -> [String: Any] in
             try await self.getSnapshot()
         }
+        AsyncFunction("refreshActivity") { () async throws -> [String: Any] in
+            try await self.refreshActivity()
+        }
         AsyncFunction("getMonth") { (offset: Int) async throws -> [String: Any] in
             try await self.getMonth(offset)
         }
@@ -38,6 +41,13 @@ final class AYRModule: Module {
     private func getSnapshot() throws -> [String: Any] {
         let model = appModel()
         model.reload()
+        return try snapshot(of: model)
+    }
+
+    @MainActor
+    private func refreshActivity() async throws -> [String: Any] {
+        let model = appModel()
+        await model.refreshActivity()
         return try snapshot(of: model)
     }
 

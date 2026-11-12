@@ -73,6 +73,17 @@ targets:
       - sdk: SwiftUI.framework
       - sdk: WidgetKit.framework
       - sdk: ActivityKit.framework
+  AYRBridgeSmoke:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: iOS/Tests/BridgeSmoke
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.codemaker-kim.ayr.bridge-smoke
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: AYR
 schemes:
   AYR:
     build:
@@ -82,3 +93,7 @@ schemes:
       config: Debug
     archive:
       config: Release
+    test:
+      config: Release
+      targets:
+        - AYRBridgeSmoke

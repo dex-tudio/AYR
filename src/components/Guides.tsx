@@ -44,12 +44,15 @@ function Opener({ label, action, failure, webNote }: { label: string; action: ()
 
 export function DisplayGuide({ snapshot }: { snapshot: AppSnapshot }) {
   const theme = useTheme();
+  const { store, refreshing } = useLedger();
   return <>
     <Card title="실시간 지출">
       {web
         ? <Body>iPhone에서 가능한 기능이에요. 이 미리보기는 화면 디자인만 보여주고 실제 잠금화면에는 표시되지 않아요.</Body>
         : <Text style={{ color: theme.ink, fontSize: 16 }}>{snapshot.activityEnabled ? '✓ 잠금화면에 표시할 수 있어요' : '설정에서 허용해주세요'}</Text>}
       <Body>설정을 마치면 앱을 열거나 결제 문자가 올 때 오늘 쓴 돈을 보여줘요. 실시간 표시는 최대 8시간 유지되고, 잠금화면에서도 최대 12시간 뒤 사라져요.</Body>
+      {!web && snapshot.ledger?.onboardingCompleted && <Button label="잠금화면에서 보기" disabled={refreshing} onPress={() => void store.refreshActivity()} />}
+      {!web && snapshot.activityNotice && <Text accessibilityRole="alert" style={{ color: theme.exceeded, fontSize: 14 }}>{snapshot.activityNotice}</Text>}
       <Opener label="AYR 설정 열기" action={() => Linking.openSettings()} failure="설정 앱을 열지 못했어요. 설정 앱에서 AYR을 직접 찾아 열어주세요."
         webNote="iPhone에서 설정 앱이 열려요." />
     </Card>

@@ -2,6 +2,10 @@
 
 현재 코드는 앱 등록·서명 정보를 준비하면 GitHub Actions의 `TestFlight` 워크플로로 IPA를 만들고 업로드할 수 있도록 구성했습니다. 서명된 IPA 생성과 TestFlight 업로드는 확인했고, 휴대폰 설치는 아직 검증하지 않았습니다. 기본 실행은 **IPA 생성만** 하며, `upload_to_testflight`를 켠 수동 실행에서만 Apple로 업로드합니다.
 
+RN/Expo 전환 후 앱은 `npm ci` → XcodeGen → CocoaPods → `AYR.xcworkspace`로 빌드합니다. 이전 SwiftUI 빌드의 업로드 성공이 새 RN 빌드의 성공을 뜻하지는 않습니다. 먼저 전환 브랜치의 macOS CI에서 Debug/Release 앱·위젯, 내장 JS 번들, Release RN→`AYRNative.getSnapshot` smoke를 통과시킵니다. 첫 CI의 `ios-pod-lock-<SHA>` artifact에서 `Podfile.lock`을 검토·커밋하고 새 SHA CI를 다시 통과시킵니다. 이후 Pods는 `--deployment`로 고정하며 TestFlight 워크플로는 lock이 없으면 서명 전에 중단합니다. 서명 archive도 `.xcodeproj` 대신 workspace를 사용합니다.
+
+Release는 JS·자산을 내장하므로 Metro가 필요 없습니다. Expo Go는 자체 Swift 모듈을 포함하지 않으므로 이 앱의 대체 설치 수단이 아닙니다. Swift/Podfile 변경 뒤에는 macOS 재빌드와 재설치가 필요합니다. Windows에서 앱 설치 없이 확인 가능한 화면·가짜 데이터 범위는 [README](../README.md#windows-화면-미리보기), 실제 기기 인계는 [POC 검증 기록](poc-results.md#rnexpo-전환-기기-검증-인계--2026-11-12)을 따릅니다. 전환 작업에서 workflow_dispatch·업로드·계정/Secrets 변경은 자동 실행하지 않습니다.
+
 ## 1. Apple 계정에 등록
 
 1. Developer → Certificates, Identifiers & Profiles에서 앱 ID `com.codemaker-kim.ayr`와 위젯 ID `com.codemaker-kim.ayr.widgets`를 각각 등록합니다.

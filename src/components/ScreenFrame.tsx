@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLedger } from '../state/LedgerProvider';
@@ -23,7 +23,8 @@ export function ScreenFrame({ title, onBack, children }: { title: string; onBack
       {onBack && <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={onBack} style={styles.back}>
         <Text style={{ color: theme.ink, fontSize: 16 }}>‹ 뒤로</Text>
       </Pressable>}
-      <Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>{title}</Text>
+      <Text testID={Platform.OS === 'ios' && snapshot && !message ? 'ayr-native-connected' : undefined}
+        accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>{title}</Text>
       {message ? <Alert message={message} onRetry={() => void store.reload()} /> : !snapshot && <Body>기록을 불러오고 있어요.</Body>}
       {children}
     </ScrollView>

@@ -50,6 +50,10 @@ jobs:
           node-version: 22.18.0
           cache: npm
       - run: npm ci
+      - name: Check JavaScript before signing
+        run: npm run typecheck && npm test && npm run build:ios-js
+      - name: Require reviewed native dependency lock
+        run: test -s Podfile.lock
       - name: Install CocoaPods
         run: sudo gem install cocoapods -v 1.16.2 --no-document
       - name: Archive, export and optionally upload

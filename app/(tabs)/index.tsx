@@ -1,9 +1,10 @@
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supportedTitles } from '../../src/ledger/contracts';
 import { ReceptionStatus } from '../../src/components/ReceptionStatus';
 import { TodaySummary } from '../../src/components/TodaySummary';
+import { Button } from '../../src/components/ui';
 import { useActiveRefresh, useLedger } from '../../src/state/LedgerProvider';
 import { useTheme } from '../../src/theme';
 
@@ -16,7 +17,8 @@ export default function Today() {
   const ready = snapshot?.ledger?.onboardingCompleted === true;
   return <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
     <ScrollView contentContainerStyle={styles.page} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void store.reload()} />}>
-      <Text style={[styles.title, { color: theme.ink }]}>오늘</Text>
+      <Text testID={Platform.OS === 'ios' && snapshot && !message ? 'ayr-native-connected' : undefined}
+        accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>오늘</Text>
       {!snapshot && !readError && <View accessibilityRole="progressbar"><ActivityIndicator color={theme.ink} /><Text style={{ color: theme.secondary }}>기록을 불러오고 있어요.</Text></View>}
       {message && <View accessibilityRole="alert" style={[styles.notice, { backgroundColor: theme.surface }]}>
         <Text style={{ color: theme.exceeded, fontSize: 16 }}>{message}</Text>
@@ -34,6 +36,14 @@ export default function Today() {
         <Pressable accessibilityRole="link" onPress={() => router.push('/connection')} style={styles.button}>
           <Text style={{ color: theme.ink, fontSize: 16, fontWeight: '700' }}>결제 문자 연결하기</Text>
         </Pressable>
+      </View>}
+      {snapshot && ready && <View style={[styles.notice, { backgroundColor: theme.surface }]}>
+        <Text accessibilityRole="header" style={{ color: theme.ink, fontSize: 16, fontWeight: '700' }}>잠금화면에서도 바로</Text>
+        <Pressable accessibilityRole="link" onPress={() => router.push('/display')} style={styles.button}>
+          <Text style={{ color: theme.ink, fontSize: 16 }}>잠금화면 설정하기</Text>
+        </Pressable>
+        {Platform.OS === 'ios' && <Button label="잠금화면에서 보기" disabled={refreshing} onPress={() => void store.refreshActivity()} />}
+        {snapshot.activityNotice && <Text accessibilityRole="alert" style={{ color: theme.exceeded, fontSize: 14 }}>{snapshot.activityNotice}</Text>}
       </View>}
     </ScrollView>
   </SafeAreaView>;

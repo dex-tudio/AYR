@@ -1,0 +1,55 @@
+import { test, expect } from '@playwright/test';
+
+test('first install completes onboarding, edits today and settings, then reaches connection and display', async ({ page }) => {
+  await page.goto('/?scenario=firstStart');
+  await expect(page.getByRole('heading', { name: '내 소비의 기준부터.' })).toBeVisible();
+  await page.getByLabel('하루 기준 금액(원)').fill('60000');
+  for (let step = 0; step < 4; step++) await page.getByRole('button', { name: '다음', exact: true }).click();
+  await page.getByRole('button', { name: '시작하기', exact: true }).click();
+  await expect(page.getByTestId('today-total')).toHaveText('32,400원');
+  await page.getByRole('link', { name: '오늘 지출 보기 · 추가 · 삭제' }).click();
+  await page.getByRole('button', { name: '지출 추가' }).click();
+  await page.getByLabel('금액(원)').fill('1000');
+  await page.getByRole('button', { name: '추가', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '오늘 지출', exact: true })).toBeVisible();
+  await expect(page.getByTestId('spending-total')).toHaveText('33,400원');
+  await page.getByRole('button', { name: '뒤로' }).click();
+  await page.getByRole('tab', { name: '월별' }).click();
+  await expect(page.getByTestId('month-total')).toHaveText('33,400원');
+  await page.getByRole('tab', { name: '오늘' }).click();
+  await page.getByRole('link', { name: '오늘 지출 보기 · 추가 · 삭제' }).click();
+  await page.getByRole('button', { name: '4번째 지출 1,000원 삭제' }).click();
+  await page.getByRole('button', { name: '1,000원 삭제', exact: true }).click();
+  await expect(page.getByTestId('spending-total')).toHaveText('32,400원');
+  await page.getByRole('button', { name: '뒤로' }).click();
+  await page.getByRole('tab', { name: '설정' }).click();
+  await page.getByRole('button', { name: '내 기준 바꾸기' }).click();
+  await page.getByRole('radio', { name: '학생' }).click();
+  await page.getByRole('button', { name: '저장', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '설정', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: '결제 문자 연결하기' }).click();
+  await expect(page.getByRole('heading', { name: '결제 문자 연결', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '뒤로' }).click();
+  await page.getByRole('link', { name: '잠금화면 설정하기' }).click();
+  await expect(page.getByTestId('lock-widget-amount')).toHaveText('32,400원');
+  await expect(page.getByText('미리보기 · 가짜 기록')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('recovery failure can retry through onboarding into a fresh empty today and month', async ({ page }) => {
+  await page.goto('/?scenario=corruptResetFailureOnce');
+  const reset = () => page.getByRole('button', { name: '원본 보관 후 새로 시작', exact: true });
+  await reset().click();
+  await reset().click();
+  await expect(page.getByRole('alert').filter({ hasText: '새로 시작하지 못했어요' })).toContainText('원본을 따로 보관하지 못해');
+  await expect(page.getByTestId('today-total')).toHaveCount(0);
+  await reset().click();
+  await reset().click();
+  await expect(page.getByRole('heading', { name: '내 소비의 기준부터.' })).toBeVisible();
+  for (let step = 0; step < 4; step++) await page.getByRole('button', { name: '다음', exact: true }).click();
+  await page.getByRole('button', { name: '시작하기', exact: true }).click();
+  await expect(page.getByTestId('today-total')).toHaveText('0원');
+  await page.getByRole('tab', { name: '월별' }).click();
+  await expect(page.getByTestId('month-total')).toHaveText('0원');
+  await expect(page.getByTestId('day-2026-11-10')).toHaveAttribute('aria-label', '2026년 11월 10일, 기록 없음');
+});

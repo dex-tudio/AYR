@@ -279,6 +279,7 @@ test('a healthy read ends a recovery failure, so the damaged screen does not out
   const healthy = new PreviewLedger();
   let mode: 'damaged' | 'healthy' = 'damaged';
   const store = new LedgerStore({
+    refreshActivity: () => healthy.refreshActivity(),
     getSnapshot: () => (mode === 'damaged' ? damaged : healthy).getSnapshot(),
     addSpending: (a, d) => healthy.addSpending(a, d), removeSpending: (i, e) => healthy.removeSpending(i, e),
     saveSettings: r => healthy.saveSettings(r), resetRecords: () => damaged.resetRecords(), getMonth: offset => healthy.getMonth(offset),

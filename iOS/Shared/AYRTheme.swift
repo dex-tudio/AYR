@@ -23,35 +23,6 @@ enum AYRTheme {
     }
 }
 
-extension View {
-    func ayrScreen() -> some View {
-        scrollContentBackground(.hidden)
-            .background(AYRTheme.background)
-            .foregroundStyle(AYRTheme.text)
-    }
-
-    func ayrCard() -> some View {
-        frame(maxWidth: .infinity, alignment: .leading)
-            .padding(20)
-            .background(AYRTheme.surface, in: RoundedRectangle(cornerRadius: 24))
-    }
-}
-
-struct AYRPrimaryButtonStyle: ButtonStyle {
-    @Environment(\.isEnabled) private var enabled
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.headline)
-            .foregroundStyle(AYRTheme.ink)
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(AYRTheme.lime, in: RoundedRectangle(cornerRadius: 18))
-            .opacity(enabled ? (configuration.isPressed ? 0.75 : 1) : 0.4)
-    }
-}
-
 func spendingColor(total: Int, budget: Int) -> Color {
     if total < budget / 2 + budget % 2 { return AYRTheme.calm }
     if total < budget { return AYRTheme.caution }

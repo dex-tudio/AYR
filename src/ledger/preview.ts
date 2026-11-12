@@ -195,6 +195,8 @@ export class PreviewLedger implements LedgerService {
     const failing = this.scenario === 'readFailure' || (this.scenario === 'readFailureOnce' && this.reads++ === 0);
     return this.build(failing ? '기록을 불러오지 못했어요. 다시 시도해주세요.' : null, failing);
   }
+  // A browser only refreshes fake state; it cannot start or authorize a Live Activity.
+  async refreshActivity(): Promise<AppSnapshot> { return this.getSnapshot(); }
   async getMonth(offset: number): Promise<MonthViewState> {
     if (!validMonthOffset(offset)) throw new RangeError(invalidMonthMessage);
     this.refresh();

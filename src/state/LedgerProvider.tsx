@@ -1,6 +1,6 @@
-import { createContext, useCallback, useContext, useState, useSyncExternalStore } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { ledgerService } from '../ledger/service';
 import { watchActive } from './polling';
@@ -13,6 +13,14 @@ const MonthContext = createContext<MonthStore | null>(null);
 export function LedgerProvider({ children }: { children: ReactNode }) {
   const [store] = useState(() => new LedgerStore(ledgerService));
   const [months] = useState(() => new MonthStore(ledgerService));
+  useEffect(() => {
+    if (Platform.OS !== 'ios') return;
+    void store.refreshActivity();
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'active') void store.refreshActivity();
+    });
+    return () => subscription.remove();
+  }, [store]);
   return <Context.Provider value={store}><MonthContext.Provider value={months}>{children}</MonthContext.Provider></Context.Provider>;
 }
 

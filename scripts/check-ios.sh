@@ -7,7 +7,7 @@ swiftc -I "$scratch" -L "$scratch" -lAYRCore iOS/Shared/SpendingPresentation.swi
 LD_LIBRARY_PATH="$scratch${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" "$scratch/presentation-checks"
 swiftc -I "$scratch" -L "$scratch" -lAYRCore iOS/Shared/SpendingPresentation.swift iOS/App/LedgerBridgeState.swift iOS/Tests/Bridge/main.swift -o "$scratch/bridge-checks"
 LD_LIBRARY_PATH="$scratch${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" "$scratch/bridge-checks"
-for source in iOS/App/*.swift iOS/Widgets/*.swift iOS/Shared/*.swift; do
+for source in iOS/App/*.swift iOS/Widgets/*.swift iOS/Shared/*.swift iOS/Tests/BridgeSmoke/*.swift; do
   swiftc -frontend -parse "$source"
 done
 echo 'iOS Swift syntax checks passed (SDK type checking requires Xcode)'

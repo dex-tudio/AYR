@@ -20,6 +20,7 @@ async function call<T>(run: (module: LedgerService) => Promise<T>): Promise<T> {
 // Amounts stay decimal text and the opaque expectedCurrent is passed through untouched; Swift validates both.
 export const ledgerService: LedgerService = {
   async getSnapshot() { return call(module => module.getSnapshot()); },
+  async refreshActivity() { return call(module => module.refreshActivity()); },
   async getMonth(offset) {
     // Expo converts numbers to Int by rounding, so only an integer inside -11...0 goes to Swift (which checks again).
     if (!validMonthOffset(offset)) throw new RangeError(invalidMonthMessage);

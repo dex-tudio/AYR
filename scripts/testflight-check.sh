@@ -13,6 +13,7 @@ with tempfile.TemporaryDirectory(prefix='ayr-signing-check-') as scratch:
         (root / directory).mkdir()
     (root / 'workspace/scripts').mkdir()
     shutil.copy('scripts/prepare-ios.sh', root / 'workspace/scripts/prepare-ios.sh')
+    pod_lock = root / 'workspace/Podfile.lock'
     stub = root / 'bin/stub'
     stub.write_text('''#!/usr/bin/env python3
 import json, os, sys
@@ -41,7 +42,7 @@ elif command == 'pod':
     if args == ['--version']:
         print('1.16.2 (stub)')
     else:
-        assert args[0] == 'install'
+        assert args == (['install', '--deployment'] if Path('Podfile.lock').exists() else ['install'])
         assert (Path(os.environ['RUNNER_TEMP']) / 'generated').exists()
         if os.environ.get('FAIL_POD') == 'true':
             sys.exit(7)
@@ -96,6 +97,8 @@ elif command == 'xcrun':
              ('archive failure', {'FAIL_ARCHIVE': 'true'}, False),
              ('generation failure', {'FAIL_GENERATE': 'true'}, False),
              ('pod failure', {'FAIL_POD': 'true'}, False),
+             ('missing pod lock', {}, False),
+             ('explicit first pod resolution', {'AYR_BOOTSTRAP_PODS': '1'}, True),
              ('wrong team', {'APPLE_TEAM_ID': 'WRONGTEAM'}, False),
              ('expired profile', {'APPLE_APP_PROFILE_BASE64': profile('com.codemaker-kim.ayr',
                  '11111111-1111-1111-1111-111111111111', ExpirationDate=datetime.datetime(2000, 1, 1))}, False),
@@ -104,6 +107,9 @@ elif command == 'xcrun':
              ('invalid build number', {'GITHUB_RUN_NUMBER': '10000'}, False),
              ('rejected bundle with exit 0', {'UPLOAD_TO_TESTFLIGHT': 'true', 'REJECT_BUNDLE': 'true'}, False)]
     for name, changes, success in cases:
+        pod_lock.unlink(missing_ok=True)
+        if name not in ['missing pod lock', 'explicit first pod resolution']:
+            pod_lock.write_text('fixture locked pods')
         for marker in ['uploaded', 'generated', 'pods-installed']:
             (root / 'runner' / marker).unlink(missing_ok=True)
         result = subprocess.run(['bash', str(script)], env=dict(environment, **changes), capture_output=True, text=True)
@@ -120,5 +126,5 @@ elif command == 'xcrun':
         else:
             assert not uploaded.exists(), f'{name}: unexpected upload'
         print(f'PASS TestFlight {name}')
-print('TestFlight pipeline checks: 11 passed (Apple and pod commands stubbed)')
+print('TestFlight pipeline checks: 13 passed (Apple and pod commands stubbed)')
 PY

@@ -34,7 +34,7 @@ export function LedgerGate({ children }: { children: ReactNode }) {
     </SafeAreaView>;
   }
   const connected = snapshot !== null && !readError && !snapshot.error;
-  return <View style={styles.safe} testID={connected ? (Platform.OS === 'ios' ? 'ayr-native-connected' : 'ayr-preview-connected') : undefined}>{children}</View>;
+  return <View style={styles.safe} testID={connected && Platform.OS === 'web' ? 'ayr-preview-connected' : undefined}>{children}</View>;
 }
 const styles = StyleSheet.create({
   safe: { flex: 1 }, page: { width: '100%', maxWidth: 540, alignSelf: 'center', padding: 16, gap: 20 },

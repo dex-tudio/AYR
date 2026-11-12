@@ -37,6 +37,8 @@ export type SettingsRequest = { identity: string; dailyBudget: Money; monthlyBud
 export type SettingsDraft = { identity: string; dailyBudget: string; customMonthly: boolean; monthlyBudget: string; sources: string[] };
 export interface LedgerService {
   getSnapshot(): Promise<AppSnapshot>;
+  /** Re-read and sync the native Live Activity; a display failure is separate from a saved spending. */
+  refreshActivity(): Promise<AppSnapshot>;
   /** offset 0 is this month and -11 the oldest kept month; anything else is refused. */
   getMonth(offset: number): Promise<MonthViewState>;
   /** amount is decimal text; expectedDay is the day the user saw when they typed it. */

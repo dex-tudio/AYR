@@ -1,5 +1,23 @@
 # POC 검증 기록
 
+## RN/Expo 전환 기기 검증 인계 — 2026-11-12
+
+화면 기본 진입은 RN/Expo로 바꾸고 이전 SwiftUI 제품 화면을 제거했습니다. Swift Core·App Group 장부(version 2)·고정 Intent·위젯·Activity 수명/자정 정책은 유지합니다. 웹은 고정 가짜 날짜·가짜 금액의 세션 메모리만 씁니다. 아래 실제 기기 항목은 **전부 미실행**이며 웹·Linux 통과와 구분합니다. 실제 문자 원문·금액·가게 이름은 결과나 로그에 남기지 않습니다.
+
+Windows 로컬 실행: `npm ci`, typecheck, JS 86개, Playwright 116개(재시도/스킵 없음), web/iOS JS export, Docker Core 50개·저장 15개·복구 12개·표시 7개·브릿지 경계·Swift 문법, TestFlight 모의 13개가 통과했습니다. web export에 AYRNative가 없고 iOS export에 web fake 시나리오가 없는 것도 확인했습니다. npm audit은 기존 lock의 중간 수준 취약점 5건을 보고했으며 의존성 버전은 바꾸지 않았습니다.
+
+macOS 완료 관문: 첫 CI의 `ios-pod-lock-<SHA>` artifact를 검토·커밋한 뒤 새 SHA에서 `pod install --deployment`, Debug/Release 앱·위젯 SDK 빌드, Release `main.jsbundle`과 `AYRWidgets.appex` 포함, Release simulator RN 표시→`AYRNative.getSnapshot` smoke를 다시 통과시킵니다. Windows에서는 실행할 수 없으며 통과 전까지 네이티브 전환 검증은 미완료입니다. TestFlight 워크플로 실행·업로드는 이 전환의 자동 검증에 포함하지 않습니다.
+
+기기 인계 순서(각 결과에 OS/기기·빌드 SHA와 성공/실패만 비식별 기록):
+
+1. **설치·기존 기록·시작/복구**: 승인된 TestFlight 빌드 설치 후 기존 날짜별 합계·기준·월 예산·보호된 이전 합계를 조회합니다. 별도 테스트 앱/시뮬레이터의 가짜 장부로 `saveSettings`→온보딩 완료→재실행과 손상 복구 1회를 확인합니다. 복구 취소는 무변경, 보관/저장 실패는 원본 유지, 성공은 새 온보딩인지 확인합니다. 실제 사용 장부를 고의로 손상하거나 초기화하지 않습니다.
+2. **설정·연결·플랫폼 기능**: 신분/하루 기준/월 예산 변경 후 오늘 금액과 과거 기록을 보존하는지 확인합니다. expo-clipboard 복사 성공/거부, expo-linking의 `shortcuts://`·AYR 설정 앱 이동/실패, foreground 복귀 조회, Live Activity 허용/거부 상태 표시와 재시도 안내를 확인합니다. `FunctionCallException`의 실제 메시지가 안전한 한국어 사유로 표시되고 원문/금액을 노출하지 않는지도 확인합니다.
+3. **가짜 본문 Intent·앱 흐름**: 고정 `AYR 결제 처리`에 가짜 확인용/승인 본문을 전달합니다. 확인용 본문은 합산하지 않고 승인만 오늘·월별에 반영되는지 확인합니다. 당일 추가/삭제의 중복 탭·날짜 변경·실패 후 입력 유지·성공 후 닫힘과 달력 셀 `adjustsFontSizeToFit`의 최대 금액/큰 글자/작은 폭 가독성·VoiceOver·키보드를 확인합니다.
+4. **실제 위젯·Live Activity**: 위젯 설치 후 앱/Intent 저장에 맞춰 갱신되고 읽기 실패를 0원으로 위장하지 않는지 확인합니다. 자정 후 0원·활성 8시간/잠금화면 12시간 한도, Live Activity 큰 글자의 하단 잘림과 160pt 높이, Dynamic Island 각 모양, accented/tinted 렌더링을 확인합니다. Activity는 `.xxxLarge` 글자 상한이 있어 접근성 크기 확대가 제한됩니다. 웹 목업은 최대 금액을 매우 작게 축소하므로 실제 가독성의 통과 증거가 아닙니다.
+5. **잠금 상태·평소 실제 KB 결제**: 자동화 설정·온보딩 완료 뒤 잠금 상태에서 가짜 확인용 본문 흐름을 먼저 확인합니다. 이후 다음 평소 KB국민 체크카드 결제에서 자동 합산과 위젯/Activity 갱신을 확인합니다. 검증만을 위한 결제는 요구하지 않습니다. 중복 알림의 완전 제거 불가와 KB 취소 미지원은 유지합니다.
+
+브라우저에서 앱 설치 없이 확인할 수 있는 것은 온보딩→오늘→추가/삭제→월별→설정→연결/표시 안내, 가짜 실패·재시도·손상 복구와 레이아웃입니다. 실제 문자 수신·단축어 실행·iOS 권한·잠금화면 설치/갱신·잠금 상태 처리는 브라우저로 검증할 수 없습니다. 네이티브 모듈 미등록 시에는 오류를 내며 web fake로 대체하지 않습니다.
+
 ## iOS 네이티브 POC 구현·QA 정책 검증 — 2026-11-05
 
 기준: 현재 작업 트리. 1A·2B·3A·4A·5A 정책을 반영했습니다. 기준 커밋 `f00c142`의 앱·위젯 시뮬레이터 빌드는 [CI에서 통과](https://github.com/dex-tudio/AYR/actions/runs/41784055381)했으며, 이후 QA 정책 변경분의 Apple SDK 빌드와 실기기 실행은 미검증입니다. 구현과 실제 수집 성공은 구분합니다.
