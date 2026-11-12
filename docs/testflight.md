@@ -6,6 +6,8 @@ RN/Expo 전환 후 앱은 `npm ci` → XcodeGen → CocoaPods → `AYR.xcworkspa
 
 Podfile.lock은 첫 macOS CI에서 실제 설치에 성공한 CocoaPods 1.17.0의 결과를 고정합니다. 두 워크플로는 1.17.0을 설치하고 `prepare-ios.sh`는 PATH의 기본 버전 대신 `pod _1.17.0_`을 호출해 실행 버전도 확인합니다. 일반 준비는 `pod _1.17.0_ install --deployment`로 lock 변경을 막습니다.
 
+두 워크플로는 `macos-26`에서 Xcode **26.4.1 (17E202)**을 고정 선택합니다. 설치된 ExpoModulesJSI의 포인터 캡처는 Xcode 26.3의 Swift 6.2.3에서 컴파일 오류가 나므로 Swift 6.3 툴체인을 사용합니다. 지정 버전이 없으면 다른 버전으로 대체하지 않고 중단합니다. [Apple Xcode/Swift 버전표](https://developer.apple.com/xcode/system-requirements/), [GitHub 러너 설치 목록](https://github.com/actions/runner-images/blob/main/images/macos/macos-26-arm64-Readme.md)
+
 Release는 JS·자산을 내장하므로 Metro가 필요 없습니다. Expo Go는 자체 Swift 모듈을 포함하지 않으므로 이 앱의 대체 설치 수단이 아닙니다. Swift/Podfile 변경 뒤에는 macOS 재빌드와 재설치가 필요합니다. Windows에서 앱 설치 없이 확인 가능한 화면·가짜 데이터 범위는 [README](../README.md#windows-화면-미리보기), 실제 기기 인계는 [POC 검증 기록](poc-results.md#rnexpo-전환-기기-검증-인계--2026-11-12)을 따릅니다. 전환 작업에서 workflow_dispatch·업로드·계정/Secrets 변경은 자동 실행하지 않습니다.
 
 ## 1. Apple 계정에 등록
@@ -82,7 +84,7 @@ Windows에서는 아래 명령의 파일명만 바꿔 Base64를 클립보드로 
 
 1. 이 워크플로 파일이 기본 브랜치에 있어야 수동 실행할 수 있습니다. 현재 저장소의 기본 브랜치는 `feat/native-app`이므로 해당 브랜치에 승인받은 변경을 푸시한 뒤 Actions → **TestFlight → Run workflow**에서 선택합니다. 푸시·실행은 사용자의 승인 후 진행합니다. [GitHub 수동 실행 조건](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-running-a-workflow)
 2. 처음에는 업로드를 끄고 실행합니다. `checks`와 `archive`가 통과하고 IPA artifact가 생성되는지 확인합니다. 빌드 번호는 `실행 번호.재실행 횟수`이며 최신 실행을 다시 실행해도 겹치지 않습니다. 더 오래된 실행의 재실행은 Apple의 빌드 번호 순서 제한에 걸릴 수 있어 새 실행을 시작합니다.
-3. Apple 업로드가 승인되면 새 수동 실행에서 `upload_to_testflight`를 켭니다. 워크플로는 Xcode 26 이상의 설치본을 선택해 archive·export·validate·upload를 수행합니다. [Apple 업로드 요구 사항](https://developer.apple.com/help/app-store-connect/manage-builds/upload-builds/)
+3. Apple 업로드가 승인되면 새 수동 실행에서 `upload_to_testflight`를 켭니다. 워크플로는 위에 고정한 Xcode로 archive·export·validate·upload를 수행합니다. [Apple 업로드 요구 사항](https://developer.apple.com/help/app-store-connect/manage-builds/upload-builds/)
 4. Apple 처리 완료 후 App Store Connect → 해당 앱 → TestFlight에서 암호화 수출 규정 질문을 사용자가 확인합니다. 코드에서 답변을 임의 확정하지 않습니다.
 5. 내부 테스트 그룹을 만들고 본인 App Store Connect 계정을 추가한 뒤 해당 빌드를 연결합니다. 초대 발송은 사용자 요청·승인 후 진행합니다. iPhone에 TestFlight를 설치하고 초대를 수락해 앱을 설치합니다. [Apple 내부 테스터 안내](https://developer.apple.com/help/app-store-connect/test-a-beta-version/add-internal-testers/)
 6. 온보딩 → 가짜 본문 Intent → 오늘·월별 화면 → 잠금화면 위젯·Live Activity를 확인합니다. 실제 문자 검증은 다음 평소 KB 체크카드 결제에서 진행하며 검증만을 위해 결제하지 않습니다.

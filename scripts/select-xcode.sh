@@ -1,16 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
-selected=$(python3 - <<'PY'
-import re
-from pathlib import Path
-candidates = [(tuple(map(int, match.group(1).split('.'))), path) for path in Path('/Applications').glob('Xcode_*.app')
-              if (match := re.fullmatch(r'Xcode_(\d+(?:\.\d+)*)\.app', path.name)) and int(match.group(1).split('.')[0]) >= 26]
-if candidates:
-    print(max(candidates)[1])
-PY
-)
-[[ -n "$selected" ]] || { echo 'Xcode 26 or newer is required' >&2; exit 1; }
-sudo xcode-select --switch "$selected/Contents/Developer"
-xcodebuild -version
-major=$(xcodebuild -version | awk '/^Xcode / {split($2, version, "."); print version[1]}')
-test "$major" -ge 26
+# Use Swift 6.3 to avoid ExpoModulesJSI's pointer-capture errors on Swift 6.2.
+selected=/Applications/Xcode_26.4.1.app/Contents/Developer
+[[ -d "$selected" ]] || { echo 'Xcode 26.4.1 (17E202) is required; use the macos-26 runner' >&2; exit 1; }
+sudo xcode-select --switch "$selected"
+version=$(xcodebuild -version)
+printf '%s\n' "$version"
+[[ "$version" == $'Xcode 26.4.1\nBuild version 17E202' ]] || { echo 'Unexpected Xcode version or build' >&2; exit 1; }

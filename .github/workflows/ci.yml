@@ -21,6 +21,7 @@ jobs:
         run: |
           apt-get update && apt-get install -y --no-install-recommends python3
           bash scripts/testflight-check.sh
+          bash scripts/select-xcode-check.sh
   web:
     runs-on: ubuntu-latest
     steps:
@@ -40,10 +41,10 @@ jobs:
           name: web-failure
           path: test-results/
   ios:
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
-      - name: Select Xcode 26 or newer
+      - name: Select Xcode 26.4.1
         run: bash scripts/select-xcode.sh
       - name: Install XcodeGen
         run: brew install xcodegen

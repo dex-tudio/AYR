@@ -33,15 +33,16 @@ jobs:
           bash scripts/check-recovery.sh
           bash scripts/check-ios.sh
           bash scripts/testflight-check.sh
+          bash scripts/select-xcode-check.sh
   archive:
     needs: checks
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Select Xcode 26 or newer
+      - name: Select Xcode 26.4.1
         run: bash scripts/select-xcode.sh
       - name: Install XcodeGen
         run: brew install xcodegen
