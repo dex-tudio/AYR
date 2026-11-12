@@ -1,4 +1,4 @@
-import ExpoModulesCore
+internal import ExpoModulesCore
 
 @objc(ExpoModulesProvider)
 final class ExpoModulesProvider: AutolinkedExpoModulesProvider {

@@ -1,4 +1,4 @@
-import Expo
+internal import Expo
 import React
 import ReactAppDependencyProvider
 import SwiftUI
@@ -18,7 +18,7 @@ struct RNRootView: UIViewRepresentable {
 
     @MainActor
     final class Coordinator {
-        let delegate: RNDelegate
+        private let delegate: RNDelegate
         let factory: ExpoReactNativeFactory
         init() {
             let delegate = RNDelegate()

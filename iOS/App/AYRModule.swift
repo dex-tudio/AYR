@@ -1,6 +1,6 @@
 import ActivityKit
 import AYRCore
-import ExpoModulesCore
+internal import ExpoModulesCore
 
 final class AYRModule: Module {
     private var model: AppModel?
