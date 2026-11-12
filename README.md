@@ -14,6 +14,7 @@ KB 결제 문자 → 단축어 자동화(본문 전달) → AYR App Intent → �
 4. [금융 API 검토 기록](docs/financial-api-review.md): 보류한 PWA·금융 API·앱인토스 조사.
 5. [TestFlight 준비와 GitHub 설정](docs/testflight.md): Windows에서 인증서·프로파일·Secrets 준비, 수동 빌드·업로드, 본인 iPhone 설치 순서.
 6. [결제 알림 템플릿·단축어 연결 조사](docs/payment-notification-research.md): 주요 은행·카드사·카카오페이·네이버페이의 알림 경로, 확보한 형식과 미확인 항목.
+7. [카카오페이·Npay 앱 알림 설계](docs/pay-app-notification-design.md): 공통 자동화 템플릿, 기존 문자 호환성, 구현 전 확인할 입력·중복 수집 정책.
 
 ## 구조
 
