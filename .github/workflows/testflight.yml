@@ -55,7 +55,7 @@ jobs:
       - name: Require reviewed native dependency lock
         run: test -s Podfile.lock
       - name: Install CocoaPods
-        run: sudo gem install cocoapods -v 1.16.2 --no-document
+        run: sudo gem install cocoapods -v 1.17.0 --no-document
       - name: Archive, export and optionally upload
         env:
           APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}

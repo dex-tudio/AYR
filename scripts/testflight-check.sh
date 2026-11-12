@@ -39,8 +39,9 @@ elif command == 'xcodegen':
         assert (Path(os.environ['HOME']) / 'Library/Developer/Xcode/UserData/Provisioning Profiles' / f'{uuid}.mobileprovision').exists()
     (Path(os.environ['RUNNER_TEMP']) / 'generated').touch()
 elif command == 'pod':
+    assert args.pop(0) == '_1.17.0_', 'CocoaPods must be invoked with its locked version'
     if args == ['--version']:
-        print('1.16.2 (stub)')
+        print(os.environ.get('POD_VERSION', '1.17.0'))
     else:
         assert args == (['install', '--deployment'] if Path('Podfile.lock').exists() else ['install'])
         assert (Path(os.environ['RUNNER_TEMP']) / 'generated').exists()
@@ -97,6 +98,7 @@ elif command == 'xcrun':
              ('archive failure', {'FAIL_ARCHIVE': 'true'}, False),
              ('generation failure', {'FAIL_GENERATE': 'true'}, False),
              ('pod failure', {'FAIL_POD': 'true'}, False),
+             ('wrong CocoaPods version', {'POD_VERSION': '0.0.0'}, False),
              ('missing pod lock', {}, False),
              ('explicit first pod resolution', {'AYR_BOOTSTRAP_PODS': '1'}, True),
              ('wrong team', {'APPLE_TEAM_ID': 'WRONGTEAM'}, False),
@@ -126,5 +128,5 @@ elif command == 'xcrun':
         else:
             assert not uploaded.exists(), f'{name}: unexpected upload'
         print(f'PASS TestFlight {name}')
-print('TestFlight pipeline checks: 13 passed (Apple and pod commands stubbed)')
+print('TestFlight pipeline checks: 14 passed (Apple and pod commands stubbed)')
 PY

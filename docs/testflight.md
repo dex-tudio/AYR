@@ -4,6 +4,8 @@
 
 RN/Expo 전환 후 앱은 `npm ci` → XcodeGen → CocoaPods → `AYR.xcworkspace`로 빌드합니다. 이전 SwiftUI 빌드의 업로드 성공이 새 RN 빌드의 성공을 뜻하지는 않습니다. 먼저 전환 브랜치의 macOS CI에서 Debug/Release 앱·위젯, 내장 JS 번들, Release RN→`AYRNative.getSnapshot` smoke를 통과시킵니다. 첫 CI의 `ios-pod-lock-<SHA>` artifact에서 `Podfile.lock`을 검토·커밋하고 새 SHA CI를 다시 통과시킵니다. 이후 Pods는 `--deployment`로 고정하며 TestFlight 워크플로는 lock이 없으면 서명 전에 중단합니다. 서명 archive도 `.xcodeproj` 대신 workspace를 사용합니다.
 
+Podfile.lock은 첫 macOS CI에서 실제 설치에 성공한 CocoaPods 1.17.0의 결과를 고정합니다. 두 워크플로는 1.17.0을 설치하고 `prepare-ios.sh`는 PATH의 기본 버전 대신 `pod _1.17.0_`을 호출해 실행 버전도 확인합니다. 일반 준비는 `pod _1.17.0_ install --deployment`로 lock 변경을 막습니다.
+
 Release는 JS·자산을 내장하므로 Metro가 필요 없습니다. Expo Go는 자체 Swift 모듈을 포함하지 않으므로 이 앱의 대체 설치 수단이 아닙니다. Swift/Podfile 변경 뒤에는 macOS 재빌드와 재설치가 필요합니다. Windows에서 앱 설치 없이 확인 가능한 화면·가짜 데이터 범위는 [README](../README.md#windows-화면-미리보기), 실제 기기 인계는 [POC 검증 기록](poc-results.md#rnexpo-전환-기기-검증-인계--2026-11-12)을 따릅니다. 전환 작업에서 workflow_dispatch·업로드·계정/Secrets 변경은 자동 실행하지 않습니다.
 
 ## 1. Apple 계정에 등록

@@ -62,7 +62,7 @@ test('native module absence is an error, never preview fallback', async () => {
 test('native preparation and CI keep workspace, bundle, app-only pods connected', () => {
   const read = (path: string) => readFileSync(path, 'utf8');
   assert.match(read('scripts/prepare-ios.sh'), /xcodegen generate --spec/);
-  assert.match(read('scripts/prepare-ios.sh'), /pod install --deployment/);
+  assert.match(read('scripts/prepare-ios.sh'), /pod _1\.17\.0_ install --deployment/);
   assert.match(read('scripts/testflight-build.sh'), /bash scripts\/prepare-ios.sh "\$overlay_spec"/);
   assert.match(read('scripts/testflight-build.sh'), /-workspace AYR.xcworkspace/);
   assert.match(read('project.yml'), /export PROJECT_ROOT="\$PROJECT_DIR"/);
