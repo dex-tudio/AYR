@@ -4,9 +4,16 @@ import type { Locator, Page } from '@playwright/test';
 const noOverflow = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
 // Every part of the design preview shows the amount the app shows: widget (lock screen, home) and Live Activity (card, Dynamic Island).
 const amounts = ['lock-widget-amount', 'home-widget-amount', 'activity-amount', 'island-compact-amount'];
+const openSettings = async (page: Page) => {
+  const tab = page.getByRole('tab', { name: '설정' });
+  await tab.click();
+  // Today has the same link; wait for the lazy settings route before choosing it.
+  await expect(tab).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('heading', { name: '설정', exact: true })).toBeVisible();
+};
 const openDisplay = async (page: Page, scenario = 'default') => {
   await page.goto(`/?scenario=${scenario}`);
-  await page.getByRole('tab', { name: '설정' }).click();
+  await openSettings(page);
   await page.getByRole('link', { name: '잠금화면 설정하기' }).click();
   await expect(page.getByRole('heading', { name: '잠금화면 표시' })).toBeVisible();
 };
@@ -72,6 +79,12 @@ for (const [scenario, amount, phrase] of [['empty', '0원', '아직은 여유 �
 }
 
 test('an amount changed in the app shows up in the preview and turns to the exceeded phrase', async ({ page }) => {
+  // A cold settings route leaves the same-named link on Today visible until its bundle arrives.
+  await page.route(/\/settings-[\w-]+\.js$/, async route => {
+    const response = await route.fetch();
+    await new Promise(resolve => setTimeout(resolve, 500));
+    await route.fulfill({ response });
+  });
   await page.goto('/');
   await page.getByRole('link', { name: '오늘 지출 보기 · 추가 · 삭제' }).click();
   await page.getByRole('button', { name: '지출 추가' }).click();
@@ -79,7 +92,7 @@ test('an amount changed in the app shows up in the preview and turns to the exce
   await page.getByRole('button', { name: '추가', exact: true }).click();
   await expect(page.getByTestId('spending-total')).toHaveText('52,400원');
   await page.getByRole('button', { name: '뒤로' }).click();
-  await page.getByRole('tab', { name: '설정' }).click();
+  await openSettings(page);
   await page.getByRole('link', { name: '잠금화면 설정하기' }).click();
   for (const id of amounts) await expect(page.getByTestId(id)).toHaveText('52,400원');
   await expect(page.getByTestId('home-widget').getByText('님 부자임?')).toBeVisible();
