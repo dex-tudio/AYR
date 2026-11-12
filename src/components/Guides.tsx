@@ -66,6 +66,7 @@ export function DisplayGuide({ snapshot }: { snapshot: AppSnapshot }) {
 }
 
 export function AutomationGuide({ snapshot }: { snapshot: AppSnapshot }) {
+  const theme = useTheme();
   const ledger = snapshot.ledger;
   if (!ledger) return null;
   const sources = automationSources(snapshot, ledger);
@@ -76,7 +77,7 @@ export function AutomationGuide({ snapshot }: { snapshot: AppSnapshot }) {
     </Card>
     {sources.length === 0 && <Card title="연결할 수단이 없어요"><Body>온보딩이나 설정에서 연결할 수 있는 결제 수단을 먼저 선택해주세요.</Body></Card>}
     {sources.map(source => <Card key={source.raw} title={source.title}>
-      <Text selectable style={{ fontFamily: Platform.select({ ios: 'Menlo', default: 'monospace' }), fontSize: 16 }}>{source.filterKeyword}</Text>
+      <Text selectable style={{ color: theme.ink, fontFamily: Platform.select({ ios: 'Menlo', default: 'monospace' }), fontSize: 16 }}>{source.filterKeyword}</Text>
       <CopyButton label="연결 문구 복사" accessibilityLabel={`${source.title} 연결 문구 복사`} text={source.filterKeyword ?? ''} />
     </Card>)}
     {sources.length > 0 && <Card title="공통 설정 순서">
@@ -99,6 +100,7 @@ export function AutomationGuide({ snapshot }: { snapshot: AppSnapshot }) {
 
 // The last automation call is global: it is whatever the ledger says, not a result of this screen's own action.
 export function ConnectionCheck({ snapshot }: { snapshot: AppSnapshot }) {
+  const theme = useTheme();
   const { store } = useLedger();
   // While this check is on screen and the app is active, read the ledger every 3 seconds.
   useActivePolling(3000);
@@ -111,7 +113,7 @@ export function ConnectionCheck({ snapshot }: { snapshot: AppSnapshot }) {
       {sources.length === 0 && <Body>온보딩이나 설정에서 연결할 수 있는 결제 수단을 먼저 선택해주세요.</Body>}
     </Card>
     {sources.map(source => <Card key={source.raw} title={source.title}>
-      <Text selectable style={{ fontFamily: Platform.select({ ios: 'Menlo', default: 'monospace' }), fontSize: 16 }}>{source.testText}</Text>
+      <Text selectable style={{ color: theme.ink, fontFamily: Platform.select({ ios: 'Menlo', default: 'monospace' }), fontSize: 16 }}>{source.testText}</Text>
       <CopyButton label="확인용 문구 복사" accessibilityLabel={`${source.title} 확인용 문구 복사`} text={source.testText} />
     </Card>)}
     <Card title="마지막 자동화 호출">

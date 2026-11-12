@@ -22,6 +22,32 @@ const openSettings = async (page: Page, scenario = 'default') => {
   await expect(page.getByRole('heading', { name: '설정', exact: true })).toBeVisible();
 };
 
+for (const [path, text] of [['/connection', 'KB국민체크'], ['/connection-check', 'KB국민체크 AYR테스트']]) {
+  test(`dark connection text stays readable on its card: ${path}`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.goto(path);
+    const phrase = page.getByText(text, { exact: true });
+    await expect(phrase).toBeVisible();
+    const colors = await phrase.evaluate(element => {
+      const color = getComputedStyle(element).color;
+      let background = 'rgba(0, 0, 0, 0)';
+      for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+        background = getComputedStyle(parent).backgroundColor;
+        if (background !== 'rgba(0, 0, 0, 0)') break;
+      }
+      const luminance = (rgb: string) => rgb.match(/\d+/g)!.slice(0, 3).map(Number).map(value => {
+        const channel = value / 255;
+        return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+      }).reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index], 0);
+      const ink = luminance(color), surface = luminance(background);
+      return { color, background, contrast: (Math.max(ink, surface) + 0.05) / (Math.min(ink, surface) + 0.05) };
+    });
+    expect(colors.background).toBe('rgb(42, 48, 36)');
+    expect(colors.color).toBe('rgb(242, 243, 233)');
+    expect(colors.contrast).toBeGreaterThanOrEqual(4.5);
+  });
+}
+
 test('a first start goes to onboarding and walks five steps with back and forward', async ({ page }) => {
   await page.goto('/?scenario=firstStart');
   await step(page, titles[0]);
