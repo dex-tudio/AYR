@@ -12,7 +12,7 @@ target 'AYR' do
   use_expo_modules!(providerName: 'AutolinkedExpoModulesProvider.swift')
   config = use_native_modules!([
     'node', '--no-warnings', '--eval', "require('expo/bin/autolinking')",
-    'expo-modules-autolinking', 'react-native-config', '--json', '--platform', 'ios'
+    'expo-modules-autolinking', 'react-native-config', '--json', '--platform', 'ios', '--source-dir', __dir__
   ])
   use_react_native!(path: config[:reactNativePath], app_path: __dir__)
   post_install do |installer|
