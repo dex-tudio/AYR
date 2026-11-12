@@ -17,5 +17,8 @@ target 'AYR' do
   use_react_native!(path: config[:reactNativePath], app_path: __dir__)
   post_install do |installer|
     react_native_post_install(installer, config[:reactNativePath], mac_catalyst_enabled: false)
+    installer.pods_project.build_configurations.each do |configuration|
+      configuration.build_settings['PROJECT_ROOT'] = '$(SRCROOT)/..'
+    end
   end
 end
