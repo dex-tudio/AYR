@@ -74,14 +74,16 @@ jobs:
           if git ls-files --error-unmatch Podfile.lock >/dev/null 2>&1; then
             git diff --exit-code -- Podfile.lock
           fi
-      - name: Build app and widgets without signing
+      - name: Build app and widgets for simulator
         run: |
+          # Local ad-hoc signatures carry App Group entitlements without an Apple identity.
           for configuration in Debug Release; do
             xcodebuild -workspace AYR.xcworkspace -scheme AYR \
               -configuration "$configuration" -sdk iphonesimulator \
               -derivedDataPath build/iOS -showBuildTimingSummary \
               -destination 'generic/platform=iOS Simulator' ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \
-              COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO build
+              COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=YES \
+              CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= build
             app="build/iOS/Build/Products/$configuration-iphonesimulator/AYR.app"
             test -d "$app/PlugIns/AYRWidgets.appex"
             if [[ "$configuration" == Release ]]; then
@@ -95,7 +97,8 @@ jobs:
           xcodebuild test -workspace AYR.xcworkspace -scheme AYR -configuration Release \
             -destination "platform=iOS Simulator,id=$simulator" -derivedDataPath build/iOS \
             -resultBundlePath build/BridgeSmoke.xcresult -only-testing:AYRBridgeSmoke \
-            ARCHS=arm64 ONLY_ACTIVE_ARCH=YES COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=YES COMPILER_INDEX_STORE_ENABLE=NO \
+            CODE_SIGNING_ALLOWED=YES CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM=
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
