@@ -5,10 +5,15 @@ import { PreviewLedger } from '../ledger/preview.ts';
 import { LedgerStore } from '../state/store.ts';
 import type { AppSnapshot } from '../ledger/contracts.ts';
 
-test('the product always starts RN with the Expo delegate, without the previous UI', () => {
+test('the product starts RN through the Expo scene lifecycle, without the previous UI', () => {
   const entry = readFileSync('iOS/App/AYRApp.swift', 'utf8');
-  assert.match(entry, /@UIApplicationDelegateAdaptor\(AYRExpoAppDelegate.self\)/);
-  assert.match(entry, /RNRootView\(\)/);
+  assert.match(entry, /class AYRApp: ExpoAppDelegate, ExpoReactNativeFactoryProvider/);
+  assert.match(entry, /var window: UIWindow\?/);
+  assert.match(entry, /ExpoReactNativeFactory\(delegate: delegate\)/);
+  assert.match(readFileSync('iOS/App/SceneDelegate.swift', 'utf8'), /class SceneDelegate: ExpoAppSceneDelegate/);
+  const info = readFileSync('iOS/metadata/App-Info.plist', 'utf8');
+  assert.match(info, /<key>UISceneConfigurations<\/key>/);
+  assert.match(info, /<string>\$\(PRODUCT_MODULE_NAME\)\.SceneDelegate<\/string>/);
   assert.doesNotMatch(entry, /#if DEBUG|--ayr-rn-preview|AppModel|HomeView|OnboardingView/);
   for (const name of ['HomeView', 'MonthlyView', 'OnboardingView', 'SettingsView', 'SettingsFields', 'TodaySpendingView', 'ConnectionViews', 'ReceptionStatusView']) {
     assert.equal(existsSync(`iOS/App/${name}.swift`), false, name);

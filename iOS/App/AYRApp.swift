@@ -1,10 +1,21 @@
-import SwiftUI
+internal import Expo
+import React
+import ReactAppDependencyProvider
 
 @main
-struct AYRApp: App {
-    @UIApplicationDelegateAdaptor(AYRExpoAppDelegate.self) private var appDelegate
+final class AYRApp: ExpoAppDelegate, ExpoReactNativeFactoryProvider {
+    var window: UIWindow?
+    private var reactNativeDelegate: ExpoReactNativeFactoryDelegate?
+    var reactNativeFactory: RCTReactNativeFactory?
 
-    var body: some Scene {
-        WindowGroup { RNRootView() }
+    override func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        let delegate = RNDelegate()
+        delegate.dependencyProvider = RCTAppDependencyProvider()
+        reactNativeDelegate = delegate
+        reactNativeFactory = ExpoReactNativeFactory(delegate: delegate)
+        return super.application(application, didFinishLaunchingWithOptions: launchOptions)
     }
 }
