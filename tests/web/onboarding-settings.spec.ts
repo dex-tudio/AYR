@@ -146,12 +146,10 @@ test('a clipboard failure is reported instead of shown as copied', async ({ page
   await expect(page.getByText('복사했어요.')).toHaveCount(0);
 });
 
-test('a test text is shown as the last call but never added, and finishing without it is not a success', async ({ page }) => {
+// The settings → connection route is covered in app-flow; opening the check directly avoids clicking a link the hidden Today tab also has.
+test('a test text is shown as the last call but never added', async ({ page }) => {
   await stubClipboard(page, true);
-  await page.goto('/?scenario=empty');
-  await page.getByRole('tab', { name: '설정' }).click();
-  await page.getByRole('link', { name: '결제 문자 연결하기' }).click();
-  await page.getByRole('link', { name: '연결 확인하기' }).click();
+  await page.goto('/connection-check?scenario=empty');
   await expect(page.getByText('KB국민체크 AYR테스트', { exact: true })).toBeVisible();
   await expect(shown(page, '아직 도착한 결제 문자가 없어요')).toBeVisible();
   await page.getByRole('button', { name: 'KB국민 체크카드 · 문자 확인용 문구 복사' }).click();
@@ -160,7 +158,6 @@ test('a test text is shown as the last call but never added, and finishing witho
   await expect(shown(page, '확인용 문자가 도착했어요. 지출에는 더하지 않았어요.')).toBeVisible();
   await expect(page.getByText('미리보기 시뮬레이션이에요. 실제 문자 자동화 결과가 아니에요.')).toBeVisible();
   expect(await noOverflow(page)).toBe(true);
-  await page.getByRole('button', { name: '뒤로' }).click();
   await page.getByRole('button', { name: '뒤로' }).click();
   await page.getByRole('tab', { name: '오늘' }).click();
   await expect(page.getByTestId('today-total')).toHaveText('0원');
