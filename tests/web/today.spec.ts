@@ -46,3 +46,16 @@ test('maximum money keeps every digit and the won unit visible', async ({ page }
   expect(box!.x + box!.width).toBeLessThanOrEqual(viewportWidth);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
+test('tab labels sit fully inside their tab at every viewport', async ({ page }) => {
+  await page.goto('/');
+  for (const name of ['오늘', '월별', '설정']) {
+    const tab = await page.getByRole('tab', { name }).boundingBox();
+    const text = page.getByRole('tab', { name }).getByText(name, { exact: true });
+    const label = await text.boundingBox();
+    // An empty icon box once squeezed the label below its own font size and pushed it to the bottom of the bar.
+    const fontSize = await text.evaluate(element => parseFloat(getComputedStyle(element).fontSize));
+    expect(label!.height).toBeGreaterThanOrEqual(fontSize);
+    expect(label!.y).toBeGreaterThanOrEqual(tab!.y);
+    expect(label!.y + label!.height).toBeLessThanOrEqual(tab!.y + tab!.height);
+  }
+});
