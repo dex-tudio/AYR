@@ -43,6 +43,9 @@ export default function Spending() {
   useEffect(() => { store.clearFailure(); }, [store]);
   const ledger = snapshot?.ledger;
   const identity = snapshot?.metadata.identities.find(item => item.raw === ledger?.settings.identity);
+  // The list changed under an open question (a reception, a new day): drop it so it cannot reappear on another row with the same index.
+  const currentToken = ledger?.current.expectedCurrent;
+  useEffect(() => { if (removal && removal.expectedCurrent !== currentToken) setRemoval(null); }, [removal, currentToken]);
   const confirmRemoval = async () => {
     if (!removal) return;
     await store.removeSpending(removal.index, removal.expectedCurrent);
@@ -93,7 +96,7 @@ export default function Spending() {
       </View>
       {BigInt(ledger.current.carriedTotal) > 0n && <Card title="합계로 남은 지출">
         <Text style={{ color: theme.secondary, fontSize: 16 }}>이전 합계 {formatMoney(ledger.current.carriedTotal)}</Text>
-        <Body>날짜나 시간대가 바뀌기 전에 합계로 남긴 기록이에요. 이 금액은 바꿀 수 없고, 아래 지출만 하나씩 지울 수 있어요.</Body>
+        <Body>날짜나 시간대가 바뀌기 전에 합계로 남긴 기록이에요. 이 금액은 바꿀 수 없고, 위 지출만 하나씩 지울 수 있어요.</Body>
       </Card>}
       {failure?.source === 'remove' && <Alert title="반영하지 못했어요" message={failure.message} />}
       <Pressable accessibilityRole="button" onPress={() => router.push('/add-spending')}
