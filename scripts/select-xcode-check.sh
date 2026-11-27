@@ -7,11 +7,11 @@ from pathlib import Path
 
 source = Path('scripts/select-xcode.sh').read_text()
 cases = [
-    ('pinned alongside newer releases', ['26.3', '26.4.1', '26.6', '27.2'], '17E202', True),
-    ('missing pin with older release', ['26.3'], '17C529', False),
-    ('missing pin with newer release', ['26.6'], '17F113', False),
-    ('wrong pinned build', ['26.4.1'], 'unexpected-build', False),
-    ('only pinned release', ['26.4.1'], '17E202', True),
+    ('pinned alongside other releases', ['26.6', '27.0', '27.1', '27.2', '28.0'], '27B52', True),
+    ('missing pin with older release', ['27.1'], '27A9275', False),
+    ('missing pin with newer release', ['28.0'], '28A100', False),
+    ('wrong pinned build', ['27.2'], 'unexpected-build', False),
+    ('only pinned release', ['27.2'], '27B52', True),
 ]
 for name, versions, build, succeeds in cases:
     with tempfile.TemporaryDirectory(prefix='ayr-xcode-check-') as scratch:
@@ -47,8 +47,8 @@ elif command == 'xcodebuild':
                 SELECTION=str(selection), XCODE_BUILD=build))
         assert (result.returncode == 0) == succeeds, (name, result.stdout, result.stderr)
         if succeeds:
-            assert selection.read_text() == str(applications / 'Xcode_26.4.1.app/Contents/Developer'), name
-        elif '26.4.1' not in versions:
+            assert selection.read_text() == str(applications / 'Xcode_27.2.app/Contents/Developer'), name
+        elif '27.2' not in versions:
             assert not selection.exists(), name
         print(f'passed: {name}')
 print(f'Xcode selection checks passed ({len(cases)} cases)')
