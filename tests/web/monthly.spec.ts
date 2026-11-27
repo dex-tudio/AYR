@@ -14,10 +14,13 @@ const day = (page: Page, key: string) => page.getByTestId(`day-${key}`);
 test('the month shows total, budget, remaining, comparison, calendar and phrase days that add up', async ({ page }) => {
   await openMonthly(page);
   await expect(page.getByTestId('month-title')).toHaveText('2026년 11월');
+  await expect(page.getByRole('heading', { name: '지갑이 도감' })).toBeVisible();
+  // Default preview month: calm 5, caution 5, exceeded 1 days. The tie goes to the heavier band, so the badge is the caution one.
+  await expect(page.getByTestId('month-badge')).toHaveText('칭호: 아슬아슬 줄타기꾼');
   await expect(page.getByTestId('month-total')).toHaveText('286,400원');
   await expect(page.getByTestId('month-budget')).toHaveText('예산 1,500,000원');
   await expect(page.getByTestId('month-remaining')).toHaveText('1,213,600원 남았어요');
-  await expect(page.getByTestId('month-comparison')).toHaveText('지난달 같은 기간보다 44,400원 더 썼어요.');
+  await expect(page.getByTestId('month-comparison')).toHaveText('지난달 같은 기간보다 44,400원 더 썼어요. (국밥 4.4그릇)');
   await expect(page.getByTestId('phrase-calm')).toContainText('5일');
   await expect(page.getByTestId('phrase-caution')).toContainText('5일');
   await expect(page.getByTestId('phrase-exceeded')).toContainText('1일');
@@ -74,7 +77,7 @@ test('adding and deleting a spending changes the month total together with today
   await page.getByRole('tab', { name: '월별' }).click();
   await expect(page.getByTestId('month-total')).toHaveText('291,500원');
   await expect(day(page, '2026-11-11')).toHaveAttribute('aria-label', '2026년 11월 11일, 37,500원, 오늘 좀 쓰는데?');
-  await expect(page.getByTestId('month-comparison')).toHaveText('지난달 같은 기간보다 49,500원 더 썼어요.');
+  await expect(page.getByTestId('month-comparison')).toHaveText('지난달 같은 기간보다 49,500원 더 썼어요. (국밥 4.9그릇)');
   await page.getByRole('tab', { name: '오늘' }).click();
   await expect(page.getByTestId('today-total')).toHaveText('37,500원');
   await page.getByRole('link', { name: '오늘의 범행 기록 보기' }).click();

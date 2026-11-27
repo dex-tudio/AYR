@@ -4,17 +4,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { FitAmount } from '../../src/components/FitAmount';
 import { MonthlyCalendar } from '../../src/components/MonthlyCalendar';
 import { Alert, Body, Button, Card } from '../../src/components/ui';
+import { convertAmount, monthBadge } from '../../src/fun';
 import { formatMoney, monthOffsets } from '../../src/ledger/contracts';
 import type { MonthViewState } from '../../src/ledger/contracts';
 import { useActiveMonthRefresh, useActiveRefresh, useLedger, useMonth } from '../../src/state/LedgerProvider';
-import { useTheme } from '../../src/theme';
+import { fonts, useTheme } from '../../src/theme';
 
 function comparisonText(comparison: MonthViewState['comparison']) {
   if (!comparison) return '비교할 지난달 기록이 아직 없어요.';
   const amount = formatMoney(comparison.difference);
-  if (comparison.direction === 'more') return `지난달 같은 기간보다 ${amount} 더 썼어요.`;
-  if (comparison.direction === 'less') return `지난달 같은 기간보다 ${amount} 덜 썼어요.`;
-  return '지난달 같은 기간과 같아요.';
+  if (comparison.direction === 'same') return '지난달 같은 기간과 같아요.';
+  const gukbap = convertAmount(comparison.difference, 'gukbap').text.slice('국밥 '.length);
+  return `지난달 같은 기간보다 ${amount} ${comparison.direction === 'more' ? '더' : '덜'} 썼어요. (국밥 ${gukbap})`;
 }
 
 export default function Monthly() {
@@ -30,10 +31,15 @@ export default function Monthly() {
       onPress={() => store.select(target)} style={[styles.nav, { opacity: enabled ? 1 : 0.35 }]}>
       <Text style={{ color: theme.ink, fontSize: 24 }}>{mark}</Text>
     </Pressable>;
+  // Same BigInt ratio as the Today gauge; a zero budget reads as full.
+  const percent = !month ? 0 : BigInt(month.budget) === 0n ? 100 : Number(BigInt(month.total) >= BigInt(month.budget) ? 100n : (BigInt(month.total) * 100n) / BigInt(month.budget));
   const refresh = () => { void ledger.store.reload(); void store.reload(); };
   return <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
     <ScrollView contentContainerStyle={styles.page} refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} />}>
-      <Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>월별 지출</Text>
+      <View style={styles.titleRow}>
+        <Text accessibilityRole="header" style={[styles.title, { color: theme.ink }]}>지갑이 도감</Text>
+        {month && <View style={styles.badge}><Text testID="month-badge" style={styles.badgeText}>칭호: {monthBadge(month.phraseCounts)}</Text></View>}
+      </View>
       <View style={styles.monthRow}>
         {nav('이전 달', '‹', offset - 1, month?.canGoPrevious ?? offset > monthOffsets.oldest)}
         <Text testID="month-title" accessibilityRole="header" style={{ color: theme.ink, fontSize: 22, fontWeight: '800' }}>{month?.title ?? '…'}</Text>
@@ -44,7 +50,11 @@ export default function Monthly() {
       {month && <>
         {message && <Body>마지막으로 불러온 기록이에요.</Body>}
         <Card title="월 합계">
-          <FitAmount text={formatMoney(month.total)} max={34} testID="month-total" label={`월 합계 ${formatMoney(month.total)}`} />
+          <FitAmount text={formatMoney(month.total)} max={34} testID="month-total" label={`월 합계 ${formatMoney(month.total)}`} fontFamily={fonts.display} />
+          <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: percent }}
+            style={[styles.gauge, { backgroundColor: theme.surface, borderColor: theme.line }]}>
+            <View style={{ width: `${percent}%`, height: '100%', backgroundColor: theme.accent }} />
+          </View>
           <Text testID="month-budget" style={{ color: theme.secondary, fontSize: 16 }}>예산 {formatMoney(month.budget)}</Text>
           <Text testID="month-remaining" style={{ color: month.overBudget ? theme.exceeded : theme.calm, fontSize: 16, fontWeight: '700' }}>
             {formatMoney(month.remaining)} {month.overBudget ? '초과' : '남았어요'}
@@ -54,7 +64,7 @@ export default function Monthly() {
         </Card>
         <Card><MonthlyCalendar month={month} /></Card>
         <Card title="어떤 날들이었나요?">
-          {month.phraseCounts.map(item => <View key={item.band} testID={`phrase-${item.band}`} style={styles.row}>
+          {month.phraseCounts.map(item => <View key={item.band} testID={`phrase-${item.band}`} style={[styles.row, styles.pill, { backgroundColor: `${theme[item.band]}26`, borderColor: theme[item.band] }]}>
             <Text style={{ color: theme[item.band], fontSize: 16, flex: 1 }}>{item.phrase}</Text>
             <Text style={{ color: theme.ink, fontSize: 16, fontWeight: '700' }}>{item.days}일</Text>
           </View>)}
@@ -66,7 +76,12 @@ export default function Monthly() {
 }
 const styles = StyleSheet.create({
   safe: { flex: 1 }, page: { width: '100%', maxWidth: 540, alignSelf: 'center', padding: 16, gap: 20 },
-  title: { fontSize: 28, fontWeight: '800', marginTop: 12 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 12 },
+  title: { fontSize: 28, fontFamily: fonts.display, fontWeight: '400', flexShrink: 1 },
+  badge: { backgroundColor: '#111111', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, transform: [{ rotate: '3deg' }], flexShrink: 1 },
+  badgeText: { color: '#FFD43B', fontSize: 14, fontFamily: fonts.display, fontWeight: '400' },
+  gauge: { height: 18, borderWidth: 3, borderRadius: 9, overflow: 'hidden' },
+  pill: { borderWidth: 2, borderRadius: 999, paddingHorizontal: 14 },
   monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   nav: { minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' },
   row: { flexDirection: 'row', gap: 12, minHeight: 32, alignItems: 'center' },
