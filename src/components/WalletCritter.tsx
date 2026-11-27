@@ -60,7 +60,7 @@ export function WalletCritter({ band, size = 240, onPoke }: { band: Band; size?:
   const k = size / W;
   const c = theme.critterLine;
   const line = { borderColor: c, borderWidth: LINE };
-  const eye = (cx: number, cy: number, d: number, pupil: number) => <View key={cx} style={centered(cx, cy, d, { backgroundColor: '#FFFFFF', borderColor: c, borderWidth: 4, alignItems: 'center', justifyContent: 'center' })}>
+  const eye = (cx: number, cy: number, d: number, pupil: number) => <View key={cx} style={centered(cx, cy, d, { backgroundColor: theme.critterEye, borderColor: c, borderWidth: 4, alignItems: 'center', justifyContent: 'center' })}>
     <View style={{ width: pupil, height: pupil, borderRadius: pupil / 2, backgroundColor: c }} />
   </View>;
   const bill = (left: number, top: number, deg: number, mark = false) => <View key={left} style={box(left, top, 56, 70, { backgroundColor: theme.bill, borderColor: c, borderWidth: 4, borderRadius: 8, transform: [{ rotate: `${deg}deg` }], alignItems: 'center', justifyContent: 'center' })}>
@@ -71,7 +71,7 @@ export function WalletCritter({ band, size = 240, onPoke }: { band: Band; size?:
   const arc = (left: number, top: number, width: number, height: number, flip = false) => <View key={left} style={box(left, top, width, height, flip
     ? { borderTopWidth: LINE, borderLeftWidth: LINE, borderRightWidth: LINE, borderTopLeftRadius: height, borderTopRightRadius: height, borderColor: c }
     : { borderBottomWidth: LINE, borderLeftWidth: LINE, borderRightWidth: LINE, borderBottomLeftRadius: height, borderBottomRightRadius: height, borderColor: c })} />;
-  const drop = (left: number, top: number) => <View key={left} style={box(left, top, 12, 12, { backgroundColor: theme.tear, borderColor: c, borderWidth: 2, borderRadius: 6, borderTopLeftRadius: 0, transform: [{ rotate: '45deg' }] })} />;
+  const drop = (left: number, top: number) => <View key={left} style={box(left, top, 12, 18, { backgroundColor: theme.tear, borderColor: c, borderWidth: 2, borderRadius: 6, borderTopLeftRadius: 0, transform: [{ rotate: '45deg' }] })} />;
 
   let art;
   if (band === 'calm') {
@@ -100,9 +100,9 @@ export function WalletCritter({ band, size = 240, onPoke }: { band: Band; size?:
       <View style={box(76, 172, 6, 34, { backgroundColor: theme.tear })} /><View style={box(178, 172, 6, 34, { backgroundColor: theme.tear })} />
       <View style={box(121, 178, 18, 14, { backgroundColor: c, borderRadius: 9 })} />
       {Array.from({ length: 9 }, (_, i) => <View key={i} style={centered(62 + i * 17, 206 + 14 * (1 - ((i - 4) / 4) ** 2), 8, { backgroundColor: theme.gold })} />)}
-      <View style={box(106, 82, 12, 10, { backgroundColor: '#C9C6D3', borderRadius: 6, transform: [{ rotate: '-25deg' }] })} />
-      <View style={box(142, 82, 12, 10, { backgroundColor: '#C9C6D3', borderRadius: 6, transform: [{ rotate: '25deg' }] })} />
-      <View style={box(118, 86, 24, 14, { backgroundColor: '#8E8A9C', borderRadius: 7 })} />
+      <View style={box(106, 82, 12, 10, { backgroundColor: theme.moth, borderRadius: 6, transform: [{ rotate: '-25deg' }] })} />
+      <View style={box(142, 82, 12, 10, { backgroundColor: theme.moth, borderRadius: 6, transform: [{ rotate: '25deg' }] })} />
+      <View style={box(118, 86, 24, 14, { backgroundColor: theme.mothWing, borderRadius: 7 })} />
     </>;
   }
 

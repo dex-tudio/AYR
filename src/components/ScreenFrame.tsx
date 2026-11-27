@@ -25,7 +25,9 @@ export function ScreenFrame({ title, onBack, children, background, ink }: { titl
       </Pressable>}
       <Text testID={Platform.OS === 'ios' && snapshot && !message ? 'ayr-native-connected' : undefined}
         accessibilityRole="header" style={[styles.title, { color: ink ?? theme.ink }]}>{title}</Text>
-      {message ? <Alert message={message} onRetry={() => void store.reload()} /> : !snapshot && <Body>기록을 불러오고 있어요.</Body>}
+      {message ? <Alert message={message} onRetry={() => void store.reload()} /> : !snapshot && (ink
+        ? <Text style={{ color: ink, fontSize: 14, lineHeight: 22 }}>기록을 불러오고 있어요.</Text>
+        : <Body>기록을 불러오고 있어요.</Body>)}
       {children}
     </ScrollView>
   </SafeAreaView>;

@@ -51,7 +51,7 @@ export default function Monthly() {
         {message && <Body>마지막으로 불러온 기록이에요.</Body>}
         <Card title="월 합계">
           <FitAmount text={formatMoney(month.total)} max={34} testID="month-total" label={`월 합계 ${formatMoney(month.total)}`} fontFamily={fonts.display} />
-          <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: percent }}
+          <View accessibilityRole="progressbar" accessibilityLabel="월 예산 대비 지출" accessibilityValue={{ min: 0, max: 100, now: percent }}
             style={[styles.gauge, { backgroundColor: theme.surface, borderColor: theme.line }]}>
             <View style={{ width: `${percent}%`, height: '100%', backgroundColor: theme.accent }} />
           </View>

@@ -8,6 +8,7 @@ const colors = {
   moodCalm: ['#BDF2C9', '#123A22'], moodCaution: ['#FFD43B', '#4A3A00'], moodExceeded: ['#FF6A4D', '#4A150D'], moodInk: ['#111111', '#F5F5F0'],
   shadow: ['#111111', '#000000'], wallet: ['#6C3BFF', '#6C3BFF'], critterLine: ['#111111', '#111111'], bill: ['#5AD678', '#5AD678'],
   tear: ['#4FB6FF', '#4FB6FF'], gold: ['#FFC400', '#FFC400'], blush: ['#FF8FB1', '#FF8FB1'],
+  critterEye: ['#FFFFFF', '#FFFFFF'], moth: ['#C9C6D3', '#C9C6D3'], mothWing: ['#8E8A9C', '#8E8A9C'],
 } as const;
 
 export function palette(dark: boolean) {

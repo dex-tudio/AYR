@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import { moodBackground, palette } from '../themePalette.ts';
 
 const keys = ['background', 'surface', 'ink', 'secondary', 'line', 'lime', 'limeInk', 'accent', 'calm', 'caution', 'exceeded',
-  'moodCalm', 'moodCaution', 'moodExceeded', 'moodInk', 'shadow', 'wallet', 'critterLine', 'bill', 'tear', 'gold', 'blush'];
+  'moodCalm', 'moodCaution', 'moodExceeded', 'moodInk', 'shadow', 'wallet', 'critterLine', 'bill', 'tear', 'gold', 'blush', 'critterEye', 'moth', 'mothWing'];
 
 // WCAG 2.x relative luminance and contrast ratio.
 function luminance(hex: string) {
