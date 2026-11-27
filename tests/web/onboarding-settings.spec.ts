@@ -113,6 +113,36 @@ test('picking an identity card shows its charge and stamps only that card as con
   expect(await noOverflow(page)).toBe(true);
 });
 
+test('the dark stamp stays readable and never covers the name or the budget line', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.goto('/?scenario=firstStart');
+  const card = page.getByRole('radio', { name: '취준생' });
+  await card.click();
+  const stamp = card.getByText('확인됨');
+  await expect(stamp).toBeVisible();
+  const contrast = await stamp.evaluate(element => {
+    const color = getComputedStyle(element).color;
+    let background = 'rgba(0, 0, 0, 0)';
+    for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+      background = getComputedStyle(parent).backgroundColor;
+      if (background !== 'rgba(0, 0, 0, 0)') break;
+    }
+    const luminance = (rgb: string) => rgb.match(/\d+/g)!.slice(0, 3).map(Number).map(value => {
+      const channel = value / 255;
+      return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+    }).reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index], 0);
+    const ink = luminance(color), surface = luminance(background);
+    return (Math.max(ink, surface) + 0.05) / (Math.min(ink, surface) + 0.05);
+  });
+  expect(contrast).toBeGreaterThanOrEqual(4.5);
+  const stampBox = (await stamp.boundingBox())!;
+  for (const text of ['취준생', '하루 기준 30,000원']) {
+    const box = (await card.getByText(text, { exact: true }).boundingBox())!;
+    const apart = stampBox.x >= box.x + box.width || box.x >= stampBox.x + stampBox.width || stampBox.y >= box.y + box.height || box.y >= stampBox.y + stampBox.height;
+    expect(apart, `${text} is covered by the stamp`).toBe(true);
+  }
+});
+
 test('only the supported source can be chosen and an empty choice blocks the step', async ({ page }) => {
   await page.goto('/?scenario=firstStart');
   await next(page).click();

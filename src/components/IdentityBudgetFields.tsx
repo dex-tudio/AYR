@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, useColorScheme, View } from 'react-native';
 import type { AppSnapshot } from '../ledger/contracts';
 import { formatMoney, positiveMoney } from '../ledger/contracts';
 import { fonts, useTheme } from '../theme';
@@ -31,6 +31,7 @@ function Mugshot() {
 
 export function IdentityBudgetFields({ metadata, identity, budget, onIdentity, onBudget }: Props) {
   const theme = useTheme();
+  const dark = useColorScheme() === 'dark';
   const valid = positiveMoney(budget, metadata.maximumMoney) !== null;
   return <View style={{ gap: 12 }}>
     <View accessibilityRole="radiogroup" accessibilityLabel="신분" style={styles.group}>
@@ -38,18 +39,19 @@ export function IdentityBudgetFields({ metadata, identity, budget, onIdentity, o
         const selected = item.raw === identity;
         // The card behind the text is light unless it is the selected one in dark mode, where the surface is dark.
         const ink = selected ? theme.ink : '#111111';
-        const charge = charges[item.raw];
+        const charge = Object.hasOwn(charges, item.raw) ? charges[item.raw] : undefined;
+        const stampColor = dark ? theme.exceeded : '#D9342B';
         return <Pressable key={item.raw} accessibilityRole="radio" accessibilityLabel={item.title} aria-checked={selected}
           onPress={() => onIdentity(item.raw, item.defaultBudget)}
           style={[styles.choice, { borderColor: theme.line, backgroundColor: selected ? theme.surface : '#C9C9D2' },
             selected && { shadowColor: theme.lime, shadowOffset: { width: 5, height: 5 }, shadowOpacity: 1, shadowRadius: 0 }]}>
           <Mugshot />
-          <View style={styles.info}>
+          <View style={[styles.info, selected && styles.infoStamped]}>
             <Text maxFontSizeMultiplier={1.3} style={{ color: ink, fontSize: 24, fontFamily: fonts.display, fontWeight: '400' }}>{item.title}</Text>
             <Text style={{ color: ink, fontSize: 14 }}>하루 기준 {formatMoney(item.defaultBudget)}</Text>
             {charge && <Text style={{ color: ink, fontSize: 13 }}>{charge}</Text>}
           </View>
-          {selected && <Text maxFontSizeMultiplier={1.3} style={styles.stamp}>확인됨</Text>}
+          {selected && <Text maxFontSizeMultiplier={1.3} style={[styles.stamp, { color: stampColor, borderColor: stampColor }]}>확인됨</Text>}
         </Pressable>;
       })}
     </View>
@@ -62,10 +64,11 @@ const styles = StyleSheet.create({
   group: { gap: 12 },
   choice: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderWidth: 3, borderRadius: 16 },
   info: { flex: 1, gap: 2 },
+  infoStamped: { paddingRight: 56 },
   mugshot: { width: 64, height: 76, backgroundColor: '#E8E2D4', borderWidth: 2, borderColor: '#111111', overflow: 'hidden', alignItems: 'center' },
   rule: { position: 'absolute', left: 0, right: 0, height: 1, backgroundColor: '#111111', opacity: 0.35 },
   head: { width: 22, height: 22, borderRadius: 11, marginTop: 14 },
   torso: { width: 44, height: 40, borderTopLeftRadius: 22, borderTopRightRadius: 22, marginTop: 2 },
-  stamp: { position: 'absolute', top: 8, right: 8, color: '#D9342B', borderColor: '#D9342B', borderWidth: 3, borderRadius: 6, paddingHorizontal: 6, fontSize: 14, fontWeight: '700', transform: [{ rotate: '-14deg' }] },
+  stamp: { position: 'absolute', top: 8, right: 8, borderWidth: 3, borderRadius: 6, paddingHorizontal: 6, fontSize: 14, fontWeight: '700', transform: [{ rotate: '-14deg' }] },
   input: { minHeight: 48, borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, fontSize: 18 },
 });
