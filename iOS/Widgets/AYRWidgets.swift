@@ -54,7 +54,10 @@ private struct SpendingWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "AYRSpending", provider: SpendingProvider()) { entry in
             SpendingWidgetView(entry: entry)
-                .containerBackground(AYRTheme.background, for: .widget)
+                .containerBackground(for: .widget) {
+                    // No value (not started, unreadable) keeps the plain background.
+                    entry.total.map { AYRTheme.mood(total: $0, budget: entry.budget) } ?? AYRTheme.background
+                }
         }
         .configurationDisplayName("오늘 쓴 돈")
         .description("오늘 쓴 돈과 소비에 대한 한마디를 바로 확인해요.")
@@ -71,6 +74,7 @@ private struct SpendingWidgetView: View {
             if let total = entry.total {
                 if family == .accessoryInline {
                     Text("오늘 \(money(total)) · \(phrase(total: total, budget: entry.budget))")
+                        .font(.custom(AYRTheme.display, size: 14, relativeTo: .body))
                 } else if family == .systemSmall {
                     // Amount first, then the phrase, then the base it is judged against.
                     VStack(alignment: .leading, spacing: 6) {
@@ -79,20 +83,19 @@ private struct SpendingWidgetView: View {
                             Spacer()
                             Image(systemName: "asterisk").accessibilityHidden(true)
                         }
-                        .foregroundStyle(AYRTheme.accent)
                         Text(money(total))
                             .font(.system(.title, design: .rounded, weight: .black))
                             .monospacedDigit().lineLimit(1).minimumScaleFactor(0.4)
                         Text(phrase(total: total, budget: entry.budget))
-                            .font(.subheadline.bold())
-                            .foregroundStyle(spendingColor(total: total, budget: entry.budget))
+                            .font(.custom(AYRTheme.display, size: 17, relativeTo: .subheadline))
                             .fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 0)
                         Text("하루 기준 \(money(entry.budget))")
-                            .font(.caption).foregroundStyle(AYRTheme.secondary)
+                            .font(.caption)
                             .lineLimit(1).minimumScaleFactor(0.6)
                     }
-                    .foregroundStyle(AYRTheme.text)
+                    // The mood background carries the band; the ink is one color so the words stay readable on all three.
+                    .foregroundStyle(AYRTheme.moodInk)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     .accessibilityElement(children: .combine)
                 } else {
@@ -102,7 +105,8 @@ private struct SpendingWidgetView: View {
                         Text("오늘").font(.caption2)
                         Text(money(total)).font(.headline).minimumScaleFactor(0.4).lineLimit(1).widgetAccentable()
                         Text(phrase(total: total, budget: entry.budget))
-                            .font(.caption).fixedSize(horizontal: false, vertical: true)
+                            .font(.custom(AYRTheme.display, size: 12, relativeTo: .caption))
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityElement(children: .combine)
@@ -121,35 +125,42 @@ private struct SpendingLiveActivity: Widget {
         ActivityConfiguration(for: SpendingActivityAttributes.self) { context in
             let expired = context.isStale || context.state.day != dayKey(for: Date())
             let total = expired ? 0 : context.state.total
+            // Expired keeps the plain background and no critter: it is not today's amount any more.
+            let ink = expired ? AYRTheme.text : AYRTheme.moodInk
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text("AYR / 오늘 쓴 돈").font(.caption.bold())
                     Spacer()
                     Image(systemName: "asterisk").accessibilityHidden(true)
                 }
-                .foregroundStyle(AYRTheme.accent)
-                activityAmount(total)
-                activityMessage(expired: expired, total: total, budget: context.state.budget)
-                if !expired {
-                    Text("하루 기준 \(money(context.state.budget))")
-                        .font(.caption).foregroundStyle(AYRTheme.secondary)
-                        .lineLimit(1).minimumScaleFactor(0.6)
+                .foregroundStyle(expired ? AYRTheme.accent : ink)
+                HStack(spacing: 12) {
+                    if !expired { CritterBadge(total: total, budget: context.state.budget) }
+                    VStack(alignment: .leading, spacing: 4) {
+                        activityMessage(expired: expired, total: total, budget: context.state.budget)
+                        activityAmount(total)
+                        if !expired {
+                            Text("하루 기준 \(money(context.state.budget))")
+                                .font(.caption)
+                                .lineLimit(1).minimumScaleFactor(0.6)
+                        }
+                    }
                 }
             }
-            .foregroundStyle(AYRTheme.text)
+            .foregroundStyle(ink)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
             // The Live Activity has a fixed height for four lines; the largest standard text size keeps the last line from being cut off.
             .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-            .activityBackgroundTint(AYRTheme.background)
-            .activitySystemActionForegroundColor(AYRTheme.text)
+            .activityBackgroundTint(expired ? AYRTheme.background : AYRTheme.mood(total: total, budget: context.state.budget))
+            .activitySystemActionForegroundColor(ink)
             .privacySensitive()
         } dynamicIsland: { context in
             let expired = context.isStale || context.state.day != dayKey(for: Date())
             let total = expired ? 0 : context.state.total
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Label("오늘", systemImage: "creditcard").foregroundStyle(AYRTheme.lime)
+                    Label("오늘", systemImage: "creditcard").foregroundStyle(AYRTheme.wallet)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     Text(money(total)).bold().lineLimit(1).minimumScaleFactor(0.4)
@@ -158,12 +169,12 @@ private struct SpendingLiveActivity: Widget {
                     Text(expired ? "앱에서 새로고침" : phrase(total: total, budget: context.state.budget))
                 }
             } compactLeading: {
-                Image(systemName: "creditcard").foregroundStyle(AYRTheme.lime)
+                Image(systemName: "creditcard").foregroundStyle(AYRTheme.wallet)
             } compactTrailing: {
                 Text(money(total)).font(.caption2).lineLimit(1).minimumScaleFactor(0.3)
                     .accessibilityLabel("오늘 쓴 돈 \(money(total))")
             } minimal: {
-                Image(systemName: "creditcard").foregroundStyle(AYRTheme.lime)
+                Image(systemName: "creditcard").foregroundStyle(AYRTheme.wallet)
                     .accessibilityLabel("오늘 쓴 돈")
             }
         }
@@ -171,13 +182,14 @@ private struct SpendingLiveActivity: Widget {
 
     private func activityAmount(_ total: Int) -> some View {
         Text(money(total))
-            .font(.system(.title, design: .rounded, weight: .black))
+            .font(.system(.title2, design: .rounded, weight: .black))
             .monospacedDigit().lineLimit(1).minimumScaleFactor(0.4)
     }
 
     private func activityMessage(expired: Bool, total: Int, budget: Int) -> some View {
         Text(expired ? "날짜가 바뀌었어요 · 앱에서 새로고침" : phrase(total: total, budget: budget))
-            .font(.subheadline.bold())
+            .font(.custom(AYRTheme.display, size: expired ? 16 : 26, relativeTo: expired ? .callout : .title2))
+            .lineLimit(2).minimumScaleFactor(0.6)
             .fixedSize(horizontal: false, vertical: true)
     }
 }
