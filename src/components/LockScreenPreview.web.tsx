@@ -7,7 +7,7 @@ import { CritterFace } from './CritterFace';
 import { FitAmount } from './FitAmount';
 import { Body, Card } from './ui';
 
-// A design preview of the iPhone widget and Live Activity (iOS/Widgets/AYRWidgets.swift): amount, phrase, base, in that order.
+// A design preview of the iPhone widget and Live Activity (iOS/Widgets/AYRWidgets.swift): phrase, amount, base, in that order.
 // It is drawn from the app's current snapshot and is not a widget: nothing here is installed on, or shown by, an iPhone.
 // Phrase and band come from the snapshot, so the meaning is in the words and never only in the color.
 const expiredMessage = '날짜가 바뀌었어요 · 앱에서 새로고침';
@@ -66,7 +66,7 @@ function ActivityCard({ testID, amountID, total, message, band, base }: {
 
 function Island({ shown }: { shown: Shown }) {
   const theme = useTheme();
-  const icon = <View style={[styles.icon, { backgroundColor: theme.lime }]} />;
+  const icon = <View style={[styles.icon, { backgroundColor: theme.wallet }]} />;
   return <View style={styles.islands}>
     <Mock testID="island-compact" label={`Dynamic Island 작은 모양 미리보기. 오늘 쓴 돈 ${shown.total}`} style={styles.compact}>
       {icon}
