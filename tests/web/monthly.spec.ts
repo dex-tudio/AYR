@@ -66,9 +66,9 @@ test('moving quickly through months ends on the last chosen month with its own n
 test('adding and deleting a spending changes the month total together with today', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('link', { name: '오늘의 범행 기록 보기' }).click();
-  await page.getByRole('button', { name: '지출 추가' }).click();
+  await page.getByRole('button', { name: '자백하기' }).click();
   await page.getByLabel('금액(원)').fill('5100');
-  await page.getByRole('button', { name: '추가', exact: true }).click();
+  await page.getByRole('button', { name: '자백', exact: true }).click();
   await expect(page.getByTestId('spending-total')).toHaveText('37,500원');
   await page.getByRole('button', { name: '뒤로' }).click();
   await page.getByRole('tab', { name: '월별' }).click();
@@ -78,8 +78,8 @@ test('adding and deleting a spending changes the month total together with today
   await page.getByRole('tab', { name: '오늘' }).click();
   await expect(page.getByTestId('today-total')).toHaveText('37,500원');
   await page.getByRole('link', { name: '오늘의 범행 기록 보기' }).click();
-  await page.getByRole('button', { name: '4번째 지출 5,100원 삭제' }).click();
-  await page.getByRole('button', { name: '5,100원 삭제', exact: true }).click();
+  await page.getByRole('button', { name: '4번째 지출 5,100원 없던 일로' }).click();
+  await page.getByRole('button', { name: '5,100원 지우기', exact: true }).click();
   await expect(page.getByTestId('spending-total')).toHaveText('32,400원');
   await page.getByRole('button', { name: '뒤로' }).click();
   await page.getByRole('tab', { name: '월별' }).click();
