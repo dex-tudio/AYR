@@ -15,7 +15,9 @@ export function TodaySummary({ snapshot, title }: { snapshot: AppSnapshot; title
   const ledger = snapshot.ledger;
   if (!ledger) return null;
   const { band, current } = ledger;
-  const pokes = poked.band === band ? poked.count : 0; // a new band starts the lines over
+  // A new band starts the lines over; reset in state so a later return to the old band does not revive the old count.
+  if (poked.band !== band) setPoked({ band, count: 0 });
+  const pokes = poked.band === band ? poked.count : 0;
   const identity = snapshot.metadata.identities.find(item => item.raw === ledger.settings.identity);
   const total = BigInt(current.total), budget = BigInt(current.budget);
   const percent = budget === 0n ? 100 : Number(total >= budget ? 100n : (total * 100n) / budget);
@@ -40,7 +42,7 @@ export function TodaySummary({ snapshot, title }: { snapshot: AppSnapshot; title
       <FitAmount text={text} testID="today-total" label={amountLabel(current.total, unit)} max={56} color={ink} fontFamily={fonts.display} />
     </Pressable>
     <Text style={[styles.detail, { color: ink }]}>{caption} · 숫자를 누르면 단위가 바뀝니다</Text>
-    <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: percent }}
+    <View accessibilityRole="progressbar" accessibilityLabel="기준 대비 오늘 지출" accessibilityValue={{ min: 0, max: 100, now: percent }}
       style={[styles.gauge, { backgroundColor: theme.surface, borderColor: theme.line }]}>
       <View style={{ width: `${percent}%`, height: '100%', backgroundColor: theme.ink }} />
     </View>

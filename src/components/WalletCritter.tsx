@@ -12,7 +12,7 @@ function useReduceMotion() {
   const [reduce, setReduce] = useState(false);
   useEffect(() => {
     let live = true;
-    void AccessibilityInfo.isReduceMotionEnabled().then(value => { if (live) setReduce(value); }, () => {});
+    void AccessibilityInfo.isReduceMotionEnabled().then(value => { if (live) setReduce(value); }, () => { if (live) setReduce(true); }); // unknown setting: stay calm
     const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduce);
     return () => { live = false; subscription.remove(); };
   }, []);
@@ -27,6 +27,8 @@ export function WalletCritter({ band, size = 240, onPoke }: { band: Band; size?:
   const reduce = useReduceMotion();
   const sway = useRef({ y: new Animated.Value(0), x: new Animated.Value(0), r: new Animated.Value(0) }).current;
   const squash = useRef({ x: new Animated.Value(1), y: new Animated.Value(1) }).current;
+  const pokeAnimation = useRef<Animated.CompositeAnimation | null>(null);
+  useEffect(() => () => pokeAnimation.current?.stop(), []);
 
   useEffect(() => {
     const { y, x, r } = sway;
@@ -50,7 +52,9 @@ export function WalletCritter({ band, size = 240, onPoke }: { band: Band; size?:
       Animated.timing(squash.x, { toValue: x, duration, useNativeDriver: native }),
       Animated.timing(squash.y, { toValue: y, duration, useNativeDriver: native }),
     ]);
-    Animated.sequence([step(1.18, 0.78, 105), step(0.9, 1.12, 105), step(1, 1, 140)]).start();
+    pokeAnimation.current?.stop();
+    pokeAnimation.current = Animated.sequence([step(1.18, 0.78, 105), step(0.9, 1.12, 105), step(1, 1, 140)]);
+    pokeAnimation.current.start();
   }
 
   const k = size / W;
