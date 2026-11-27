@@ -40,6 +40,10 @@ export default function Settings() {
           {link('결제 문자 연결하기', '/connection')}
           {link('잠금화면 설정하기', '/display')}
         </Card>
+        <Card title="처음부터 다시 볼래요">
+          <Body>신분부터 연결 확인까지 처음 설정 5단계를 다시 거쳐요. 오늘 지출과 월 기록은 그대로이고, 그동안에도 결제 문자는 계속 더해져요. 단계마다 바로 저장돼요.</Body>
+          <Button label="처음 설정 다시 하기" onPress={() => router.push('/onboarding?again=1')} />
+        </Card>
         <Card title="기기 안에만 보관해요">
           <Body>오늘의 개별 지출 금액과 최근 12개월의 날짜별 합계·기준 금액만 보관해요. 문자 내용과 가게 이름은 저장하지 않아요.</Body>
           <Body>자동화가 꺼져 놓친 결제도 0원으로 보일 수 있어요. 같은 문자가 다시 오면 두 번 더해질 수 있고, KB 결제 취소는 아직 반영되지 않아요.</Body>

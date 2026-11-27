@@ -13,15 +13,15 @@ export function useClose(fallback: '/spending' | '/' | '/settings') {
 }
 
 // Screens share one read-failure alert with a retry button and one loading text, so none repeats them.
-export function ScreenFrame({ title, onBack, children, background, ink }: { title: string; onBack?: () => void; children: ReactNode; background?: string; ink?: string }) {
+export function ScreenFrame({ title, onBack, backLabel = '뒤로', children, background, ink }: { title: string; onBack?: () => void; backLabel?: string; children: ReactNode; background?: string; ink?: string }) {
   const theme = useTheme();
   const { store, snapshot, readError } = useLedger();
   // A read that failed inside the ledger (no ledger, an error) is as much a read failure as a thrown one.
   const message = readError ?? snapshot?.error?.message;
   return <SafeAreaView style={[styles.safe, { backgroundColor: background ?? theme.background }]}>
     <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
-      {onBack && <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={onBack} style={styles.back}>
-        <Text style={{ color: ink ?? theme.ink, fontSize: 16 }}>‹ 뒤로</Text>
+      {onBack && <Pressable accessibilityRole="button" accessibilityLabel={backLabel} onPress={onBack} style={styles.back}>
+        <Text style={{ color: ink ?? theme.ink, fontSize: 16 }}>‹ {backLabel}</Text>
       </Pressable>}
       <Text testID={Platform.OS === 'ios' && snapshot && !message ? 'ayr-native-connected' : undefined}
         accessibilityRole="header" style={[styles.title, { color: ink ?? theme.ink }]}>{title}</Text>

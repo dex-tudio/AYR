@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Redirect } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { AutomationGuide, ConnectionCheck, DisplayGuide } from '../src/components/Guides';
 import { IdentityBudgetFields } from '../src/components/IdentityBudgetFields';
-import { ScreenFrame } from '../src/components/ScreenFrame';
+import { ScreenFrame, useClose } from '../src/components/ScreenFrame';
 import { SourcePicker } from '../src/components/SourcePicker';
 import { Alert, Body, Button, Card } from '../src/components/ui';
 import { supportedTitles } from '../src/ledger/contracts';
@@ -19,18 +19,25 @@ export default function Onboarding() {
   const theme = useTheme();
   const { store, snapshot, failure, mutating } = useLedger();
   const [step, setStep] = useState(1);
+  const router = useRouter();
+  const close = useClose('/settings');
+  // `?again=1` (from settings) walks the same steps over a finished onboarding: records stay and collection never pauses,
+  // because the ledger stays finished and each step saves like the settings editor.
+  const again = useLocalSearchParams<{ again?: string }>().again === '1';
   useActiveRefresh();
   useEffect(() => { store.clearFailure(); }, [store]);
   const ledger = snapshot?.ledger;
   const { draft, metadata, update, pickIdentity, request: requestFor } = useSettingsDraft(snapshot);
-  if (ledger?.onboardingCompleted) return <Redirect href="/" />;
+  if (ledger?.onboardingCompleted && !again) return <Redirect href="/" />;
   const request = requestFor(step === 5);
   // Moving on saves first; a failed save keeps the step and the failure, and the same button retries.
   const advance = async () => {
     if (!request || mutating) return;
-    if (await store.saveSettings(request) && step < 5) setStep(step + 1);
+    if (!await store.saveSettings(request)) return;
+    if (step < 5) setStep(step + 1);
+    else if (again) router.replace('/');
   };
-  return <ScreenFrame title={titles[step - 1]} background={room.background} ink={room.ink}>
+  return <ScreenFrame title={titles[step - 1]} background={room.background} ink={room.ink} onBack={again ? close : undefined} backLabel={again ? '그만하기' : undefined}>
     <View accessibilityRole="progressbar" accessibilityValue={{ min: 1, max: 5, now: step, text: `5단계 중 ${step}단계` }} style={[styles.progress, { backgroundColor: room.track }]}>
       <View style={[styles.fill, { width: `${step * 20}%`, backgroundColor: room.fill }]} />
     </View>
