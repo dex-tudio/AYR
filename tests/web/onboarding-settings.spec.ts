@@ -349,3 +349,24 @@ test('a screen with a failed read shows the error with a retry and then its cont
   await expect(page.getByRole('alert')).toHaveCount(0);
   await expect(page.getByRole('link', { name: '연결 확인하기' })).toBeVisible();
 });
+
+test('settings can walk the onboarding again without losing records or pausing collection', async ({ page }) => {
+  await page.goto('/?scenario=default');
+  const total = await page.getByTestId('today-total').innerText();
+  await page.getByRole('tab', { name: '설정' }).click();
+  await page.getByRole('button', { name: '처음 설정 다시 하기' }).click();
+  await step(page, titles[0]);
+  await expect(page.getByText('심문 1/5')).toBeVisible();
+  // Leaving midway returns to settings and keeps the onboarding finished.
+  await page.getByRole('button', { name: '그만하기' }).click();
+  await expect(page.getByRole('heading', { name: '설정', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '처음 설정 다시 하기' }).click();
+  await page.getByRole('radio', { name: '취준생' }).click();
+  for (const title of titles.slice(1)) {
+    await next(page).click();
+    await step(page, title);
+  }
+  await page.getByRole('button', { name: '시작하기', exact: true }).click();
+  await expect(page.getByTestId('today-total').filter({ visible: true })).toHaveText(total);
+  await expect(shown(page, '취준생 · 기준 30,000원')).toBeVisible();
+});
