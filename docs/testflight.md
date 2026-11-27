@@ -10,7 +10,7 @@ Ruby도 **3.3.13**으로 고정합니다. 기본 JSON 2.7.2와 2.9.1은 Pod 명�
 
 CI의 시뮬레이터 실행은 `CODE_SIGN_IDENTITY=-`의 로컬 ad-hoc 서명으로 App Group 권한을 포함합니다. Apple 계정·배포 인증서·프로파일·App Store Connect API는 사용하지 않습니다. 실제 기기 설치와 배포용 서명은 아래의 별도 절차입니다.
 
-두 워크플로는 `macos-26`에서 Xcode **26.4.1 (17E202)**을 고정 선택합니다. 설치된 ExpoModulesJSI의 포인터 캡처는 Xcode 26.3의 Swift 6.2.3에서 컴파일 오류가 나므로 Swift 6.3 툴체인을 사용합니다. 지정 버전이 없으면 다른 버전으로 대체하지 않고 중단합니다. [Apple Xcode/Swift 버전표](https://developer.apple.com/xcode/system-requirements/), [GitHub 러너 설치 목록](https://github.com/actions/runner-images/blob/main/images/macos/macos-26-arm64-Readme.md)
+두 워크플로는 GitHub `xcode-27` 러너에서 Xcode **27.2 (27B52)**을 고정 선택합니다. 2027년 4월부터 App Store Connect 업로드에 iOS 27 SDK(Xcode 27 이상)가 필요해서입니다(빌드 11.1 업로드 때 altool 경고 90725). 2026-11-27 기준 GitHub는 `xcode-27` 이미지를 공개 미리보기로 안내합니다. 이전에는 `macos-26`의 Xcode 26.4.1(Swift 6.3)을 썼고, Xcode 26.3의 Swift 6.2.3은 ExpoModulesJSI 포인터 캡처에서 컴파일 오류가 났습니다. 지정 버전이 없으면 다른 버전으로 대체하지 않고 중단합니다. [Apple Xcode/Swift 버전표](https://developer.apple.com/xcode/system-requirements/), [GitHub 러너 설치 목록](https://github.com/actions/runner-images/blob/main/images/macos/xcode-27-arm64-Readme.md)
 
 Release는 JS·자산을 내장하므로 Metro가 필요 없습니다. Expo Go는 자체 Swift 모듈을 포함하지 않으므로 이 앱의 대체 설치 수단이 아닙니다. Swift/Podfile 변경 뒤에는 macOS 재빌드와 재설치가 필요합니다. Windows에서 앱 설치 없이 확인 가능한 화면·가짜 데이터 범위는 [README](../README.md#windows-화면-미리보기), 실제 기기 인계는 [POC 검증 기록](poc-results.md#rnexpo-전환-기기-검증-인계--2026-11-12)을 따릅니다. 전환 작업에서 workflow_dispatch·업로드·계정/Secrets 변경은 자동 실행하지 않습니다.
 
