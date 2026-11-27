@@ -42,8 +42,8 @@ for (const [path, text] of [['/connection', 'KB국민체크'], ['/connection-che
       const ink = luminance(color), surface = luminance(background);
       return { color, background, contrast: (Math.max(ink, surface) + 0.05) / (Math.min(ink, surface) + 0.05) };
     });
-    expect(colors.background).toBe('rgb(42, 48, 36)');
-    expect(colors.color).toBe('rgb(242, 243, 233)');
+    expect(colors.background).toBe('rgb(35, 32, 46)');
+    expect(colors.color).toBe('rgb(244, 242, 250)');
     expect(colors.contrast).toBeGreaterThanOrEqual(4.5);
   });
 }

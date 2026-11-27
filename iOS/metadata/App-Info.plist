@@ -31,6 +31,10 @@
     </dict>
     <key>NSSupportsLiveActivities</key>
     <true/>
+    <key>UIAppFonts</key>
+    <array>
+        <string>BlackHanSans-Regular.ttf</string>
+    </array>
     <key>UIApplicationSceneManifest</key>
     <dict>
         <key>UIApplicationSupportsMultipleScenes</key>
