@@ -26,7 +26,7 @@ test('the scenario list opens the existing fake scenarios', async ({ page }) => 
   await expect(page.getByTestId('today-total')).toHaveText('0원');
   await expect(page.getByLabel('미리보기 시나리오')).toHaveValue('empty');
   await pick(page, '처음 시작');
-  await expect(page.getByRole('heading', { name: '내 소비의 기준부터.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '님 정체가 뭐임?' })).toBeVisible();
   await pick(page, '수신 실패');
   await expect(page.getByText('지원하는 결제 문자가 아니어서 지출에 더하지 않았어요.')).toBeVisible();
   await expect(page.getByTestId('today-total')).toHaveText('32,400원');

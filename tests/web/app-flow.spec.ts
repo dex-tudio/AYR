@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test('first install completes onboarding, edits today and settings, then reaches connection and display', async ({ page }) => {
   await page.goto('/?scenario=firstStart');
-  await expect(page.getByRole('heading', { name: '내 소비의 기준부터.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '님 정체가 뭐임?' })).toBeVisible();
   await page.getByLabel('하루 기준 금액(원)').fill('60000');
   for (let step = 0; step < 4; step++) await page.getByRole('button', { name: '다음', exact: true }).click();
   await page.getByRole('button', { name: '시작하기', exact: true }).click();
@@ -45,7 +45,7 @@ test('recovery failure can retry through onboarding into a fresh empty today and
   await expect(page.getByTestId('today-total')).toHaveCount(0);
   await reset().click();
   await reset().click();
-  await expect(page.getByRole('heading', { name: '내 소비의 기준부터.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '님 정체가 뭐임?' })).toBeVisible();
   for (let step = 0; step < 4; step++) await page.getByRole('button', { name: '다음', exact: true }).click();
   await page.getByRole('button', { name: '시작하기', exact: true }).click();
   await expect(page.getByTestId('today-total')).toHaveText('0원');

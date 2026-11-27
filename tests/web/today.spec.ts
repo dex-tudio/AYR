@@ -28,7 +28,7 @@ test('retry after a failed read reads again and recovers', async ({ page }) => {
 test('first start is distinct from configured empty records', async ({ page }) => {
   await page.goto('/?scenario=firstStart');
   // A ledger that has not finished onboarding is sent to the onboarding flow instead of showing a zero.
-  await expect(page.getByRole('heading', { name: '내 소비의 기준부터.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '님 정체가 뭐임?' })).toBeVisible();
   // The native smoke relies on this marker for a fresh ledger that has not finished onboarding.
   await expect(page.getByTestId('ayr-preview-connected')).toBeVisible();
   await expect(page.getByTestId('today-total')).toHaveCount(0);

@@ -8,7 +8,7 @@ const kb = (page: Page) => page.getByRole('checkbox', { name: 'KB국민 체크�
 // Inactive tabs stay mounted but hidden; getByText also sees them, so text checks on tab content ask for the visible one.
 const shown = (page: Page, text: string) => page.getByText(text).filter({ visible: true });
 const step = (page: Page, title: string) => expect(page.getByRole('heading', { name: title })).toBeVisible();
-const titles = ['내 소비의 기준부터.', '어떻게 결제하나요?', '잠금화면에서 만나요.', '문자가 오면, 자동으로.', '이제 연결을 확인해요.'];
+const titles = ['님 정체가 뭐임?', '어떻게 결제하나요?', '잠금화면에서 만나요.', '문자가 오면, 자동으로.', '이제 연결을 확인해요.'];
 // expo-clipboard falls back to execCommand when writeText fails and only reports failure if that throws, so the failing stub blocks both.
 const stubClipboard = (page: Page, works: boolean) => page.addInitScript(ok => {
   if (!ok) document.execCommand = () => { throw new Error('blocked'); };
@@ -52,7 +52,7 @@ test('a first start goes to onboarding and walks five steps with back and forwar
   await page.goto('/?scenario=firstStart');
   await step(page, titles[0]);
   await expect(page.getByTestId('ayr-preview-connected')).toBeVisible();
-  await expect(page.getByText('시작하기 1/5')).toBeVisible();
+  await expect(page.getByText('심문 1/5')).toBeVisible();
   expect(await noOverflow(page)).toBe(true);
   await next(page).click();
   await step(page, titles[1]);
@@ -66,7 +66,7 @@ test('a first start goes to onboarding and walks five steps with back and forwar
   expect(await noOverflow(page)).toBe(true);
   await next(page).click();
   await step(page, titles[4]);
-  await expect(page.getByText('시작하기 5/5')).toBeVisible();
+  await expect(page.getByText('심문 5/5')).toBeVisible();
   expect(await noOverflow(page)).toBe(true);
   await page.getByRole('button', { name: '이전' }).click();
   await step(page, titles[3]);
@@ -97,6 +97,20 @@ test('a new identity brings its default budget, and invalid budgets block the ne
   await page.getByRole('button', { name: '이전' }).click();
   await expect(budget(page)).toHaveValue('45000');
   await expect(page.getByRole('radio', { name: '취준생' })).toBeChecked();
+});
+
+test('picking an identity card shows its charge and stamps only that card as confirmed', async ({ page }) => {
+  await page.goto('/?scenario=firstStart');
+  await page.getByRole('radio', { name: '취준생' }).click();
+  const card = page.getByRole('radio', { name: '취준생' });
+  await expect(card.getByText('혐의: 스터디 카페 장기 투숙')).toBeVisible();
+  await expect(card.getByText('확인됨')).toBeVisible();
+  await expect(card.getByText('하루 기준 30,000원')).toBeVisible();
+  await expect(page.getByRole('radio', { name: '학생' }).getByText('혐의: 떡볶이 상습 섭취')).toBeVisible();
+  await expect(page.getByRole('radio', { name: '학생' }).getByText('확인됨')).toHaveCount(0);
+  await expect(page.getByText('확인됨')).toHaveCount(1);
+  await expect(page.getByText('기록은 이 폰 밖으로 안 나갑니다.')).toBeVisible();
+  expect(await noOverflow(page)).toBe(true);
 });
 
 test('only the supported source can be chosen and an empty choice blocks the step', async ({ page }) => {
@@ -277,7 +291,7 @@ test('a failed recovery keeps the damaged state and can be retried', async ({ pa
   await page.getByRole('button', { name: '원본 보관 후 새로 시작' }).click();
   await expect(page.getByText('원본을 따로 보관하지 못해 새로 시작하지 않았어요. 기존 기록은 그대로 두었어요.')).toBeVisible();
   await expect(page.getByRole('heading', { name: '기록을 새로 시작할까요?' })).toHaveCount(0);
-  await expect(page.getByText('내 소비의 기준부터.')).toHaveCount(0);
+  await expect(page.getByText('님 정체가 뭐임?')).toHaveCount(0);
   await page.getByRole('button', { name: '원본 보관 후 새로 시작' }).click();
   await page.getByRole('button', { name: '원본 보관 후 새로 시작' }).click();
   await step(page, titles[0]);
