@@ -165,6 +165,8 @@ private struct SpendingActivityView: View {
     let state: SpendingActivityAttributes.ContentState
     let isStale: Bool
     @Environment(\.redactionReasons) private var redaction
+    // Read here (outside the clamp below), so it is the user's real size.
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         let expired = isStale || state.day != dayKey(for: Date())
@@ -189,7 +191,7 @@ private struct SpendingActivityView: View {
                     Text(money(total))
                         .font(.system(.title2, design: .rounded, weight: .black))
                         .monospacedDigit().lineLimit(1).minimumScaleFactor(0.4)
-                    if !expired {
+                    if !expired && typeSize <= .large {
                         Text("하루 기준 \(money(state.budget))")
                             .font(.caption)
                             .lineLimit(1).minimumScaleFactor(0.6)
@@ -201,9 +203,9 @@ private struct SpendingActivityView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        // The Live Activity has a fixed height (160pt). At .large the lines are: caption 16 + 8 + critter 56 or (phrase ~32 + 4 + title2 ~28 + 4 + caption 16 = 84) + 24 padding = about 132pt;
-        // larger sizes would push the last line out.
-        .dynamicTypeSize(...DynamicTypeSize.large)
+        // The Live Activity has a fixed height (160pt). Up to .large the lines are: caption 16 + 8 + critter 56 or (phrase ~32 + 4 + title2 ~28 + 4 + caption 16 = 84) + 24 padding = about 132pt.
+        // Above .large the `하루 기준` line is dropped; at .xxxLarge (the clamp) the rest is caption ~21 + 8 + phrase ~40 + 4 + title2 ~36 + 24 padding = about 133pt, which fits.
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .background(plain ? AYRTheme.background : AYRTheme.mood(total: total, budget: state.budget))
         .privacySensitive()
     }
