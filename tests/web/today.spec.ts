@@ -5,7 +5,7 @@ test('today shows fake amount, phrase and identity with no horizontal overflow',
   await expect(page.getByText('미리보기 · 가짜 기록')).toBeVisible();
   await expect(page.getByTestId('today-total')).toHaveText('32,400원');
   await expect(page.getByText('오늘 좀 쓰는데?')).toBeVisible();
-  await expect(page.getByText('직장인 · 하루 기준 50,000원')).toBeVisible();
+  await expect(page.getByText('직장인 · 기준 50,000원')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 test('read error does not display a zero balance and can retry', async ({ page }) => {
@@ -58,4 +58,22 @@ test('tab labels sit fully inside their tab at every viewport', async ({ page })
     expect(label!.y).toBeGreaterThanOrEqual(tab!.y);
     expect(label!.y + label!.height).toBeLessThanOrEqual(tab!.y + tab!.height);
   }
+});
+test('poking the wallet critter moves to the next line for the band', async ({ page }) => {
+  await page.goto('/');
+  const poke = page.getByRole('button', { name: '지갑이 찌르기' });
+  await expect(poke).toBeVisible();
+  await expect(page.getByText('지갑이: “지금 찌를 때야?”')).toBeVisible();
+  await poke.click();
+  await expect(page.getByText('지갑이: “숨 좀 쉬자 숨 좀”')).toBeVisible();
+});
+test('tapping the amount cycles the unit and keeps the exact won in its name', async ({ page }) => {
+  await page.goto('/');
+  const amount = page.getByRole('button', { name: /^오늘 쓴 돈 32,400원/ });
+  await expect(amount).toBeVisible();
+  await amount.click();
+  await expect(page.getByTestId('today-total')).toHaveText(/^국밥 /);
+  await expect(page.getByRole('button', { name: /^오늘 쓴 돈 32,400원, 국밥 / })).toBeVisible();
+  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: /^오늘 쓴 돈 32,400원/ }).click();
+  await expect(page.getByTestId('today-total')).toHaveText('32,400원');
 });

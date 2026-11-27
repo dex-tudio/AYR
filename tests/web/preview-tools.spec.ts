@@ -48,7 +48,7 @@ test('save failure and date change scenarios are selectable', async ({ page }) =
 
 test('restart goes back to the fake starting values', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('link', { name: '오늘 지출 보기 · 추가 · 삭제' }).click();
+  await page.getByRole('link', { name: '오늘의 범행 기록 보기' }).click();
   await page.getByRole('button', { name: '지출 추가' }).click();
   await page.getByLabel('금액(원)').fill('5100');
   await page.getByRole('button', { name: '추가', exact: true }).click();

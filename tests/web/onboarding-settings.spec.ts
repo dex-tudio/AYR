@@ -195,7 +195,7 @@ test('settings show the values and editing changes identity, budget and monthly 
   await expect(page.getByText('30,000원', { exact: true })).toBeVisible();
   await expect(page.getByText('하루 기준 × 그 달 일수', { exact: true })).toBeVisible();
   await page.getByRole('tab', { name: '오늘' }).click();
-  await expect(page.getByText('취준생 · 하루 기준 30,000원')).toBeVisible();
+  await expect(page.getByText('취준생 · 기준 30,000원')).toBeVisible();
   await expect(page.getByTestId('today-total')).toHaveText('32,400원');
 });
 

@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test';
 
 const openSpending = async (page: Page, scenario = 'default') => {
   await page.goto(`/?scenario=${scenario}`);
-  await page.getByRole('link', { name: '오늘 지출 보기 · 추가 · 삭제' }).click();
+  await page.getByRole('link', { name: '오늘의 범행 기록 보기' }).click();
   await expect(page.getByRole('heading', { name: '오늘 지출' })).toBeVisible();
 };
 const noOverflow = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
@@ -156,5 +156,5 @@ test('first start cannot add spending', async ({ page }) => {
   await page.goto('/?scenario=firstStart');
   // A first start is sent to onboarding, where no spending can be added.
   await expect(page.getByRole('heading', { name: '내 소비의 기준부터.' })).toBeVisible();
-  await expect(page.getByRole('link', { name: '오늘 지출 보기 · 추가 · 삭제' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: '오늘의 범행 기록 보기' })).toHaveCount(0);
 });

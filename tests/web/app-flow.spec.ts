@@ -7,7 +7,7 @@ test('first install completes onboarding, edits today and settings, then reaches
   for (let step = 0; step < 4; step++) await page.getByRole('button', { name: '다음', exact: true }).click();
   await page.getByRole('button', { name: '시작하기', exact: true }).click();
   await expect(page.getByTestId('today-total')).toHaveText('32,400원');
-  await page.getByRole('link', { name: '오늘 지출 보기 · 추가 · 삭제' }).click();
+  await page.getByRole('link', { name: '오늘의 범행 기록 보기' }).click();
   await page.getByRole('button', { name: '지출 추가' }).click();
   await page.getByLabel('금액(원)').fill('1000');
   await page.getByRole('button', { name: '추가', exact: true }).click();
@@ -17,7 +17,7 @@ test('first install completes onboarding, edits today and settings, then reaches
   await page.getByRole('tab', { name: '월별' }).click();
   await expect(page.getByTestId('month-total')).toHaveText('33,400원');
   await page.getByRole('tab', { name: '오늘' }).click();
-  await page.getByRole('link', { name: '오늘 지출 보기 · 추가 · 삭제' }).click();
+  await page.getByRole('link', { name: '오늘의 범행 기록 보기' }).click();
   await page.getByRole('button', { name: '4번째 지출 1,000원 삭제' }).click();
   await page.getByRole('button', { name: '1,000원 삭제', exact: true }).click();
   await expect(page.getByTestId('spending-total')).toHaveText('32,400원');
