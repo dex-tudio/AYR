@@ -2,15 +2,18 @@ import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { formatMoney } from '../ledger/contracts';
 import type { AppSnapshot } from '../ledger/contracts';
-import { useTheme } from '../theme';
+import { fonts, useTheme } from '../theme';
+import { CritterFace } from './CritterFace';
 import { FitAmount } from './FitAmount';
 import { Body, Card } from './ui';
 
-// A design preview of the iPhone widget and Live Activity (iOS/Widgets/AYRWidgets.swift): amount, phrase, base, in that order.
+// A design preview of the iPhone widget and Live Activity (iOS/Widgets/AYRWidgets.swift): phrase, amount, base, in that order.
 // It is drawn from the app's current snapshot and is not a widget: nothing here is installed on, or shown by, an iPhone.
 // Phrase and band come from the snapshot, so the meaning is in the words and never only in the color.
 const expiredMessage = '날짜가 바뀌었어요 · 앱에서 새로고침';
 const onWallpaper = '#FFFFFF';
+const moodKey = { calm: 'moodCalm', caution: 'moodCaution', exceeded: 'moodExceeded' } as const;
+const displayText = { fontFamily: fonts.display, fontWeight: '400' } as const;
 
 function Caption({ children }: { children: string }) {
   const theme = useTheme();
@@ -28,7 +31,7 @@ function LockWidget({ shown }: { shown: Shown }) {
     <View style={styles.lockWidget}>
       <Text style={{ color: onWallpaper, fontSize: 12 }}>오늘</Text>
       <FitAmount text={shown.total} max={20} min={2} color={onWallpaper} testID="lock-widget-amount" />
-      <Text style={{ color: onWallpaper, fontSize: 12 }}>{shown.phrase}</Text>
+      <Text style={[displayText, { color: onWallpaper, fontSize: 12 }]}>{shown.phrase}</Text>
     </View>
   </Mock>;
 }
@@ -36,11 +39,11 @@ function LockWidget({ shown }: { shown: Shown }) {
 function HomeWidget({ shown }: { shown: Shown }) {
   const theme = useTheme();
   return <Mock testID="home-widget" label={`작은 위젯 미리보기. 오늘 쓴 돈 ${shown.total}. ${shown.phrase}. 하루 기준 ${shown.budget}`}
-    style={[styles.small, { backgroundColor: theme.background, borderColor: theme.line }]}>
-    <Text style={{ color: theme.accent, fontSize: 12, fontWeight: '700' }}>AYR / 오늘</Text>
-    <FitAmount text={shown.total} max={26} min={2} testID="home-widget-amount" />
-    <Text style={{ color: theme[shown.band], fontSize: 15, fontWeight: '700' }}>{shown.phrase}</Text>
-    <Text style={{ color: theme.secondary, fontSize: 12 }}>하루 기준 {shown.budget}</Text>
+    style={[styles.small, { backgroundColor: theme[moodKey[shown.band]], borderColor: theme.line }]}>
+    <Text style={{ color: theme.moodInk, fontSize: 12, fontWeight: '700' }}>AYR / 오늘</Text>
+    <FitAmount text={shown.total} max={26} min={2} color={theme.moodInk} testID="home-widget-amount" />
+    <Text style={[displayText, { color: theme.moodInk, fontSize: 17 }]}>{shown.phrase}</Text>
+    <Text style={{ color: theme.moodInk, fontSize: 12 }}>하루 기준 {shown.budget}</Text>
   </Mock>;
 }
 
@@ -48,18 +51,22 @@ function ActivityCard({ testID, amountID, total, message, band, base }: {
   testID: string; amountID: string; total: string; message: string; band?: Shown['band']; base?: string;
 }) {
   const theme = useTheme();
+  const ink = band ? theme.moodInk : theme.ink;
   return <Mock testID={testID} label={`Live Activity 미리보기. 오늘 쓴 돈 ${total}. ${message}${base ? `. 하루 기준 ${base}` : ''}`}
-    style={[styles.activity, { backgroundColor: theme.background, borderColor: theme.line }]}>
-    <Text style={{ color: theme.accent, fontSize: 12, fontWeight: '700' }}>AYR / 오늘 쓴 돈</Text>
-    <FitAmount text={total} max={32} min={2} testID={amountID} />
-    <Text style={{ color: band ? theme[band] : theme.ink, fontSize: 16, fontWeight: '700' }}>{message}</Text>
-    {base && <Text style={{ color: theme.secondary, fontSize: 12 }}>하루 기준 {base}</Text>}
+    style={[styles.activity, { backgroundColor: band ? theme[moodKey[band]] : theme.background, borderColor: theme.line }]}>
+    {band && <CritterFace band={band} size={40} />}
+    <View style={styles.activityText}>
+      <Text style={{ color: ink, fontSize: 12, fontWeight: '700' }}>AYR / 오늘 쓴 돈</Text>
+      <Text style={[displayText, { color: ink, fontSize: 22 }]}>{message}</Text>
+      <FitAmount text={total} max={28} min={2} color={ink} testID={amountID} />
+      {base && <Text style={{ color: ink, fontSize: 12 }}>하루 기준 {base}</Text>}
+    </View>
   </Mock>;
 }
 
 function Island({ shown }: { shown: Shown }) {
   const theme = useTheme();
-  const icon = <View style={[styles.icon, { backgroundColor: theme.lime }]} />;
+  const icon = <View style={[styles.icon, { backgroundColor: theme.wallet }]} />;
   return <View style={styles.islands}>
     <Mock testID="island-compact" label={`Dynamic Island 작은 모양 미리보기. 오늘 쓴 돈 ${shown.total}`} style={styles.compact}>
       {icon}
@@ -105,7 +112,9 @@ const styles = StyleSheet.create({
   lockWidget: { gap: 2, borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)', borderRadius: 16, padding: 8, maxWidth: 220 },
   small: { width: '100%', maxWidth: 170, minHeight: 158, borderWidth: 1, borderRadius: 22, padding: 16, gap: 8 },
   fallback: { justifyContent: 'center' },
-  activity: { width: '100%', maxWidth: 360, borderWidth: 1, borderRadius: 22, padding: 16, gap: 8 },
+  activity: { width: '100%', maxWidth: 360, borderWidth: 1, borderRadius: 22, padding: 16, gap: 12, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
+  // A basis the text needs: on a narrow or enlarged screen the text drops under the face instead of squeezing the amount.
+  activityText: { flexGrow: 1, flexShrink: 1, flexBasis: 150, minWidth: 0, gap: 4 },
   islands: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12, backgroundColor: '#2B3326', borderRadius: 24, padding: 12 },
   compact: { width: '100%', maxWidth: 230, height: 36, borderRadius: 18, backgroundColor: '#000000', paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center', gap: 6 },
   minimal: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#000000', alignItems: 'center', justifyContent: 'center' },

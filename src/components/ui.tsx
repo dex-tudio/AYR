@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useTheme } from '../theme';
+import { fonts, useTheme } from '../theme';
 
 export function Card({ children, title }: { children: ReactNode; title?: string }) {
   const theme = useTheme();
-  return <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.line }]}>
+  return <View style={[styles.card, sticker(theme)]}>
     {title && <Text accessibilityRole="header" style={[styles.heading, { color: theme.ink }]}>{title}</Text>}
     {children}
   </View>;
@@ -16,7 +16,7 @@ export function Body({ children, small, testID }: { children: ReactNode; small?:
 // A failure the user must see; role alert so a screen reader announces it.
 export function Alert({ title, message, onRetry }: { title?: string; message: string; onRetry?: () => void }) {
   const theme = useTheme();
-  return <View accessibilityRole="alert" style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.line }]}>
+  return <View accessibilityRole="alert" style={[styles.card, sticker(theme)]}>
     {title && <Text accessibilityRole="header" style={[styles.heading, { color: theme.exceeded }]}>{title}</Text>}
     <Text style={{ color: theme.exceeded, fontSize: 16 }}>{message}</Text>
     {onRetry && <Button label="다시 불러오기" onPress={onRetry} />}
@@ -29,11 +29,15 @@ export function Button({ label, onPress, disabled, tone = 'plain', accessibility
   const primary = tone === 'primary';
   return <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? label} accessibilityState={{ disabled: !!disabled }}
     disabled={disabled} onPress={onPress}
-    style={[styles.button, primary && { backgroundColor: theme.lime, borderRadius: 16, alignItems: 'center', paddingHorizontal: 20 }, { opacity: disabled ? 0.5 : 1 }]}>
-    <Text style={{ color: primary ? theme.limeInk : tone === 'danger' ? theme.exceeded : theme.ink, fontSize: 16, fontWeight: primary || tone === 'danger' ? '700' : '400' }}>{label}</Text>
+    style={[styles.button, primary && [sticker(theme, theme.lime), { borderRadius: 16, alignItems: 'center', paddingHorizontal: 20 }], { opacity: disabled ? 0.5 : 1 }]}>
+    <Text style={{ color: primary ? theme.limeInk : tone === 'danger' ? theme.exceeded : theme.ink, fontSize: primary ? 18 : 16, ...(primary ? { fontFamily: fonts.display, fontWeight: '400' as const } : { fontWeight: tone === 'danger' ? '700' as const : '400' as const }) }}>{label}</Text>
   </Pressable>;
 }
+// Sticker look: 3px outline and a hard offset shadow (no blur). Same props on iOS and web.
+function sticker(theme: ReturnType<typeof useTheme>, backgroundColor = theme.surface) {
+  return { backgroundColor, borderColor: theme.line, borderWidth: 3, shadowColor: theme.shadow, shadowOffset: { width: 4, height: 4 }, shadowOpacity: 1, shadowRadius: 0 };
+}
 const styles = StyleSheet.create({
-  card: { padding: 20, borderWidth: 1, borderRadius: 20, gap: 12 }, heading: { fontSize: 18, fontWeight: '700' },
+  card: { padding: 20, borderRadius: 18, gap: 12 }, heading: { fontSize: 20, fontFamily: fonts.display, fontWeight: '400' },
   button: { minHeight: 44, minWidth: 44, justifyContent: 'center', alignItems: 'flex-start' },
 });

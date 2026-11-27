@@ -86,10 +86,10 @@ test('an amount changed in the app shows up in the preview and turns to the exce
     await route.fulfill({ response });
   });
   await page.goto('/');
-  await page.getByRole('link', { name: '오늘 지출 보기 · 추가 · 삭제' }).click();
-  await page.getByRole('button', { name: '지출 추가' }).click();
+  await page.getByRole('link', { name: '오늘의 범행 기록 보기' }).click();
+  await page.getByRole('button', { name: '자백하기' }).click();
   await page.getByLabel('금액(원)').fill('20000');
-  await page.getByRole('button', { name: '추가', exact: true }).click();
+  await page.getByRole('button', { name: '자백', exact: true }).click();
   await expect(page.getByTestId('spending-total')).toHaveText('52,400원');
   await page.getByRole('button', { name: '뒤로' }).click();
   await openSettings(page);

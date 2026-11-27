@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Redirect } from 'expo-router';
 import { AutomationGuide, ConnectionCheck, DisplayGuide } from '../src/components/Guides';
 import { IdentityBudgetFields } from '../src/components/IdentityBudgetFields';
@@ -11,7 +11,9 @@ import { useActiveRefresh, useLedger } from '../src/state/LedgerProvider';
 import { useSettingsDraft } from '../src/state/useSettingsDraft';
 import { useTheme } from '../src/theme';
 
-const titles = ['내 소비의 기준부터.', '어떻게 결제하나요?', '잠금화면에서 만나요.', '문자가 오면, 자동으로.', '이제 연결을 확인해요.'];
+// The interrogation room is dark in both color schemes, so these do not follow the theme.
+const room = { background: '#1B1B22', ink: '#FFFFFF', dim: '#C9C9D2', track: '#3A3A46', fill: '#FFD43B' };
+const titles = ['님 정체가 뭐임?', '어떻게 결제하나요?', '잠금화면에서 만나요.', '문자가 오면, 자동으로.', '이제 연결을 확인해요.'];
 
 export default function Onboarding() {
   const theme = useTheme();
@@ -28,11 +30,11 @@ export default function Onboarding() {
     if (!request || mutating) return;
     if (await store.saveSettings(request) && step < 5) setStep(step + 1);
   };
-  return <ScreenFrame title={titles[step - 1]}>
-    <View accessibilityRole="progressbar" accessibilityValue={{ min: 1, max: 5, now: step, text: `5단계 중 ${step}단계` }} style={[styles.progress, { backgroundColor: theme.line }]}>
-      <View style={[styles.fill, { width: `${step * 20}%`, backgroundColor: theme.lime }]} />
+  return <ScreenFrame title={titles[step - 1]} background={room.background} ink={room.ink}>
+    <View accessibilityRole="progressbar" accessibilityValue={{ min: 1, max: 5, now: step, text: `5단계 중 ${step}단계` }} style={[styles.progress, { backgroundColor: room.track }]}>
+      <View style={[styles.fill, { width: `${step * 20}%`, backgroundColor: room.fill }]} />
     </View>
-    <Text style={{ color: theme.secondary, fontSize: 12 }}>시작하기 {step}/5</Text>
+    <Text style={{ color: room.dim, fontSize: 12 }}>심문 {step}/5</Text>
     {draft && snapshot && metadata && <>
       {step === 1 && <Card title="내 생활에 맞는 기준">
         <IdentityBudgetFields metadata={metadata} identity={draft.identity} budget={draft.dailyBudget}
@@ -44,20 +46,25 @@ export default function Onboarding() {
           <SourcePicker metadata={metadata} selected={draft.sources} onChange={sources => update({ sources })} />
           {draft.sources.length === 0 && <Text style={{ color: theme.exceeded, fontSize: 14 }}>연결할 결제 수단을 하나 골라주세요.</Text>}
         </Card>
-        <Body>지금은 {supportedTitles(metadata)}을(를) 연결할 수 있어요. 같은 결제가 두 번 더해지지 않도록 자동화는 하나만 만들어주세요.</Body>
+        <Text style={{ color: room.dim, fontSize: 14, lineHeight: 22 }}>지금은 {supportedTitles(metadata)}을(를) 연결할 수 있어요. 같은 결제가 두 번 더해지지 않도록 자동화는 하나만 만들어주세요.</Text>
       </>}
       {step === 3 && <DisplayGuide snapshot={snapshot} />}
       {step === 4 && <AutomationGuide snapshot={snapshot} />}
       {step === 5 && <ConnectionCheck snapshot={snapshot} />}
       {failure?.source === 'settings' && <Alert title="저장하지 못했어요" message={failure.message} />}
       <View style={styles.nav}>
-        {step > 1 && <Button label="이전" disabled={mutating} onPress={() => setStep(step - 1)} />}
+        {step > 1 && <Pressable accessibilityRole="button" accessibilityLabel="이전" accessibilityState={{ disabled: mutating }} disabled={mutating}
+          onPress={() => setStep(step - 1)} style={[styles.back, { opacity: mutating ? 0.5 : 1 }]}>
+          <Text style={{ color: room.ink, fontSize: 16 }}>이전</Text>
+        </Pressable>}
         <Button label={step === 5 ? '시작하기' : '다음'} tone="primary" disabled={!request || mutating} onPress={() => void advance()} />
       </View>
     </>}
+    <Text style={{ color: room.dim, fontSize: 12, textAlign: 'center' }}>기록은 이 폰 밖으로 안 나갑니다.</Text>
   </ScreenFrame>;
 }
 const styles = StyleSheet.create({
   progress: { height: 6, borderRadius: 3, overflow: 'hidden' }, fill: { height: 6, borderRadius: 3 },
+  back: { minHeight: 44, minWidth: 44, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 8 },
   nav: { flexDirection: 'row', gap: 12, alignItems: 'center', justifyContent: 'flex-end' },
 });

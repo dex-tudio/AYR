@@ -3,6 +3,7 @@ import { Platform, StyleSheet, Text, View } from 'react-native';
 import { formatMoney } from '../ledger/contracts';
 import type { MonthDayState, MonthViewState } from '../ledger/contracts';
 import { useTheme } from '../theme';
+import { CritterFace } from './CritterFace';
 
 const statusText = { noRecord: '기록 없음', future: '아직 오지 않은 날' } as const;
 
@@ -30,8 +31,10 @@ export function MonthlyCalendar({ month }: { month: MonthViewState }) {
       const amount = day.total === null ? '' : formatMoney(day.total).slice(0, -1);
       const tint = day.band ? `${theme[day.band]}26` : 'transparent';
       return <View key={day.key} testID={`day-${day.key}`} accessible accessibilityLabel={label(day)}
-        style={[styles.cell, styles.day, { backgroundColor: tint, borderColor: day.status === 'recorded' ? 'transparent' : theme.line, opacity: day.status === 'future' ? 0.55 : 1 }]}>
+        style={[styles.cell, styles.day, { backgroundColor: tint, borderColor: day.status === 'recorded' ? 'transparent' : theme.line },
+          day.status === 'future' && { borderColor: `${theme.accent}66`, borderWidth: 2, borderStyle: 'dashed' }]}>
         <Text style={{ color: theme.ink, fontSize: 12, fontWeight: '700' }}>{day.day}</Text>
+        {day.band && <CritterFace band={day.band} size={20} />}
         {day.total !== null
           ? <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.3} style={{ color: theme.ink, fontSize: amountSize(amount) }}>{amount}</Text>
           : <Text style={{ color: theme.secondary, fontSize: 12 }}>—</Text>}
@@ -44,5 +47,5 @@ const styles = StyleSheet.create({
   // 1/7 of the row; a fixed height keeps every week the same size.
   cell: { width: '14.2857%', alignItems: 'center', justifyContent: 'center' },
   weekday: { fontSize: 12, textAlign: 'center', paddingBottom: 6 },
-  day: { height: 54, borderWidth: 1, borderRadius: 8, gap: 4 },
+  day: { height: 58, borderWidth: 1, borderRadius: 8, gap: 1 },
 });

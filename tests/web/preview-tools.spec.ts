@@ -26,7 +26,7 @@ test('the scenario list opens the existing fake scenarios', async ({ page }) => 
   await expect(page.getByTestId('today-total')).toHaveText('0원');
   await expect(page.getByLabel('미리보기 시나리오')).toHaveValue('empty');
   await pick(page, '처음 시작');
-  await expect(page.getByRole('heading', { name: '내 소비의 기준부터.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '님 정체가 뭐임?' })).toBeVisible();
   await pick(page, '수신 실패');
   await expect(page.getByText('지원하는 결제 문자가 아니어서 지출에 더하지 않았어요.')).toBeVisible();
   await expect(page.getByTestId('today-total')).toHaveText('32,400원');
@@ -48,10 +48,10 @@ test('save failure and date change scenarios are selectable', async ({ page }) =
 
 test('restart goes back to the fake starting values', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('link', { name: '오늘 지출 보기 · 추가 · 삭제' }).click();
-  await page.getByRole('button', { name: '지출 추가' }).click();
+  await page.getByRole('link', { name: '오늘의 범행 기록 보기' }).click();
+  await page.getByRole('button', { name: '자백하기' }).click();
   await page.getByLabel('금액(원)').fill('5100');
-  await page.getByRole('button', { name: '추가', exact: true }).click();
+  await page.getByRole('button', { name: '자백', exact: true }).click();
   await expect(page.getByTestId('spending-total')).toHaveText('37,500원');
   await page.getByRole('button', { name: '다시 시작' }).click();
   await expect(page.getByTestId('today-total')).toHaveText('32,400원');

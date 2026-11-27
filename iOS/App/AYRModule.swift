@@ -1,5 +1,6 @@
 import ActivityKit
 import AYRCore
+import UIKit
 internal import ExpoModulesCore
 
 final class AYRModule: Module {
@@ -27,6 +28,10 @@ final class AYRModule: Module {
         }
         AsyncFunction("removeSpending") { (index: Int, expectedCurrent: String) async throws -> [String: Any] in
             try await self.removeSpending(index, expectedCurrent: expectedCurrent)
+        }
+        // 장식용 촉각 피드백. 결과를 기다리지 않고 메인 큐에서 울린다.
+        Function("impact") {
+            DispatchQueue.main.async { UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
         }
     }
 
